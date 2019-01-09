@@ -1,0 +1,74 @@
+DeaDBeeF - The Ultimate Music Player
+Copyright © 2009-2016 Alexey Yakovenko and contributors
+http://deadbeef.sf.net
+
+The contributors:
+
+    Alexey A. Smirnov <alexey.smirnov@gmx.com>
+        Debian packaging, patches
+
+    Anton Novikov <tonn.post@gmail.com>
+        PulseAudio plugin
+
+    Christian Boxdörfer <christian.boxdoerfer@posteo.de>
+        Lots of work on improving the GTK UI
+
+    Ian Nartowicz
+        Improved artwork, GTK UI, Converter, CDDA, various codecs, and more
+
+    Sofias <sofias@radikalismus.com>
+        Icon
+
+    starws <starws.box@gmail.com>
+        The best QA dude in the world
+
+    Stas Akimushkin <uncle.lag@gmail.com>
+        Original artwork
+
+    Viktor Semykin <thesame.ml@gmail.com>
+        Global Hotkeys, CD Audio, Cover Art, ShellExec plugins, lots of patches and suggestions, and the default cover art image
+
+    These people have also contributed significantly to the project by sending patches, testing, etc:
+    
+        Alex Dedul <rotmer@gmail.com>
+        David Bryant <david@wavpack.com>
+        Derreck <sarumyanxxl@users.sourceforge.net>
+        Igor Murzov <igor@gplsoft.org>
+        Igor Rudchenko <igor@thinkpads.net>
+        Jan D. Behrens <zykure@web.de>
+        Kryksyh <druid@foobar2000.ru>
+        Martin Panter
+        Serghey Kotlyarov <shadowsbrother@gmail.com>
+        Themaister <maister@archlinux.us>
+        Veniamin Gvozdikov <g.veniamin@googlemail.com>
+        
+
+    If you think your name is missing here, or needs to be removed, please send an email to Alexey Yakovenko <waker@users.sf.net>
+
+Special Thanks To:
+
+    James Lee
+    Jan Marguc
+    Olga Belozerova
+
+    and to all the people and anonymous creatures hanging at #deadbeef-player and #deadbeef-ru
+
+
+Bundled libraries:
+
+
+Independent implementation of MD5 (RFC 1321).
+Copyright © 1999, 2000, 2002 Aladdin Enterprises.  All rights reserved.
+
+FFT Implementation from Audacious player
+Copyright © 2011 John Lindgren
+
+Fast FTOI routines from libvorbis
+Copyright © 2002-2008 Xiph.org Foundation
+
+The UTF-8 code is based on Basic UTF-8 manipulation routines by Jeff Bezanson
+Copyright © Jeff Bezanson
+placed in the public domain Fall 2005
+
+
+For information on libraries used in plugins -- see specific plugin's copyright information.

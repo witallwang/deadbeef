@@ -1,0 +1,796 @@
+version 0.7.2
+	fixed title formatting %filename% crash
+	fixed streaming of aac content in mp4 container
+	added https:// support to vfs_curl (Viktor Semykin)
+	added zh_TW translation to deadbeef.desktop (laichiaheng)
+	fixed loading cue sheets without any metadata fields
+	fixed file close bug in VTX plugin
+	fixed evaluating nested square brackets syntax in title formatting
+	improved support for large fields in ID3v2 tags
+	fixed potential crash bug in artwork plugin
+	fixed path separator '/' escaping regression in converter
+	moved ffmpeg plugin to the end of plugin list, to prevent conflicts with other input plugins
+	added $fix_eol, $hex title formatting
+	fixed importing [, ] and \n characters from old configuration files
+	fixed "Group by artist/date/title" title formatting
+	added enumerating/exposing of all supported file extensions to ffmpeg plugin (Xinya Zhang)
+	fixed handling of ':' in file path in vfs_zip plugin
+	fixed old ffmpeg versions support
+	fixed wma decoder loudness issue
+	fixed DCA buffer allocation, to make it more musl-friendly
+	added $num implementation to title formatting (Peter Lamby)
+	fixed --nowplaying-tf behavior when player is stopped
+
+version 0.7.1
+	fixed GTKUI maximized window layout saving/restoring
+	fixed GTKUI maximized window column autoresize saving/restoring
+	fixed artwork plugin version checks
+	disabled bogus shift-jis detection, which was overriding cp1252
+	fixed mp3 bitrate calculation regression
+	fixed wrong padding of formatted time
+	fixed importing legacy title formatting fields bug
+	fixed incorrect output format after resuming paused session
+	fixed $ext title formatting bug
+	fixed %tracknumber% title formatting bug
+	fixed auto-updating title formatting fields
+	fixed FreeBSD compile issues
+	fixed cache cleaner crash bug
+	fixed crash when trying to play GYM files
+	fixed importing legacy playlist grouping config
+	fixed FLAC metadata field mapping
+	fixed FLAC metadata track/total and disc/total splitting
+
+version 0.7.0
+	converter: fixed bug overwriting the source file with destination (Ian Nartowicz)
+	artwork: added cache cleaner, MusicBrainz backend,
+		configurable default picture, numerous bugfixes,
+		performance improvements, more customization options (Ian Nartowicz)
+	playlist browser: improved drag-n-drop,
+		double-click / middle-click on empty area to create new playlist,
+		middle-click on playlist to remove it,
+		highlight current playlist, configurable columns,
+		sort columns by clicking their headers,
+		performance optimizations (Christian Boxdörfer)
+	various selection properties improvements (Christian Boxdörfer)
+	added "Skip to ..." next/prev album/genre/composer actions (Christian Boxdörfer)
+	more appearance customization options in GTKUI (Christian Boxdörfer)
+	initial OS X support, with cocoaui, coreaudio and xcode project, only in GIT sources
+	added center-alignment option to playlist columns (Christian Boxdörfer)
+	added 1 and 5 second "Seek forward/backward" actions
+	fixed random gtkui crash when closing playlist via menu
+	new title formatting implementation, aiming to be compatible with fb2k, replacing the old one
+	added grouping to search window (Ian Nartowicz)
+	improved error handling in vfs_curl (Ian Nartowicz)
+	fixed volume control via mouse scroll when using GTK3
+	fixed unwanted restarting when unpausing streaming tracks of known length
+	sid: use stereo by default, with an option to force mono; fixed performance issues
+	cdda: improved cddb support, libcdparanoia, multiple CD drives, speed selection (Ian Nartowicz)
+	gtkui: added selection focus, such that the found tracks will be focused while using the search window
+	tags: use cp1252 instead of iso8859-1 everywhere
+	fixed resuming network streams after losing network connection
+	fixed cuesheet charset detection crash bug
+	renamed mpgmad plugin to be "mp3"
+	added libmpg123 support as a 2nd backend to mp3 plugin, as default
+	mp3: fixed xing header parsing, length calculation issues
+	favor album artist over artist in "stop after current album" mode
+	gme: fixed SAP file duration and improved looping handling
+	sid: automatic detection of HVSC SongLengths.txt from sid file pathes
+	gtkui: added Tabs widget in Design mode (Christian Boxdörfer)
+	added sc68 plugin for playing Atari ST music
+	added on-demand initialization to wild-midi, to speed up player init
+	flac: fixed legacy cuesheet handling
+	added writing updated replaygain info to all supported tag formats
+	fixed setting focus on the main window / playlist on startup
+	changed volume up/down actions to have a step of 1dB instead of 2dB
+	fixed bigendian support in the converter
+	updated DUMB and GME to the newest versions (kode54)
+	fixed handling of several formats in sndfile plugin (kode54)
+	added support for ORIGINAL_RELEASE_TIME and ORIGINAL_RELEASE_YEAR metadata fields (Giulio Bernardi)
+	added loading plugins from a $DEADBEEF_PLUGIN_DIR directory (Nikolay Amiantov)
+	fixed a bug which was skipping next track after deleting current track
+	DUMB and GME can now do their own proper infinite looping in "Loop single" mode (kode54)
+	alac: Fix bits per sample varying from what the MP4 container specifies (kode54)
+	psf: fixed crash after format probing failure
+	search window title will show the number of search results
+	SRC resampler: fixed very rare buffer overflow crash
+	mp3: added LAME preset support
+	album art: fixed scaling of non-square images (Ian Nartowicz)
+	ffmpeg: updated to support new library versions
+	gtkui: improved playlist column drag-n-drop (Ian Nartowicz)
+	configuration file is now written with 0600 permissions
+	added tracktotal and disctotal support for many tagging formats
+	added extended ID3v1 genres
+	fixed int-float conversion off-by-one precision bug
+	fixed sorting algorithm u8_strcasecmp stability issue (Ian Nartowicz)
+	fixed playlist context menu actions to work on clicked playlist, instead of the current one
+
+version 0.6.2
+	added "Stop playback after current album finished" (Aleksejs Popovs)
+	added ALAC, OPUS, OggFlac encoder presets (Ian Nartowicz)
+	added configure option to build artwork plugin without network support
+	added new widget for muting chiptune voices
+	added support for SHIFT-JIS charset detection/recoding (off by default)
+	fixed "stop after current" bug, which required player restart on every change
+	fixed --gui command line option
+	fixed GUI seeking accuracy bug
+	fixed bug in extended frame flags conversion between ID3v2.3 and ID3v2.4 tag formats
+	fixed crash when loading playlist from command line
+	fixed loading album art (APIC frame) from ID3v2.4 with data length indicator
+	fixed non-utf8 locale support in console
+	fixed support for vorbis files with more than 6 channels
+	fixed playlist count limit bug
+	fixed preserving file permissions after editing ogg files
+	fixed several bugs in PLS playlist format support
+	improved FreeBSD and OSX support
+	improved charset detection in CUE and ID3v1
+	improved album art column rendering/resizing (Christian Boxdörfer)
+	improved the build system and the output build quality
+	improved detection of config changes, to avoid unnecessary config writing
+	improved support for reading APEv2 and ID3v1 tags from large files (>2Gb)
+	updated licensing information in all plugins, to include information about all used libraries
+	aac: added workaround for 7 channel sound playback bug
+	ape: play files with format >= 4.11, improved error handling
+	artwork: many fixes and improvements, including support for non-tagged files
+	dumb: added option to configure internal volume
+	ffmpeg: fixed bitrate calculation
+	ffmpeg: fixed replaygain support
+	flac: fixed/improved many things in tag reading and writing code
+	gme: added support for loading gzipped modules from supported archives (e.g. from zips)
+	gtkui, pltbrowser: better accessibility
+	gtkui: added option to disable seekbar overlay
+	gtkui: added option to display playback state as unicode characters, instead of bitmaps (works better on HDPI screens)
+	gtkui: added support for design mode to more widgets (seekbak, volumebar, playback toolbar)
+	gtkui: fixed bug in gtk_drag_check_threshold handler
+	gtkui: numerous fixes in widget layout code
+	gtkui: single/double clicking on album art column will select/play the album/group (Christian Boxdörfer)
+	lastfm: added support for scrobbling radio streams (off by default)
+	lastfm: added support for scrobbling tracks shorter than 30 sec (off by default)
+	lastfm: improved support for musicbrainz track id
+	mms: fixed few buffer overflow bugs, improved responsiveness
+	mp3: optimized scanner: less backward seeks during frame syncing
+	shellexec: fixed escaping of single quotes, prevent opening copies of shxui dialogs
+	vfs_zip: huge speed improvements
+	vorbis, oggflac: new tagging code (Ian Nartowicz)
+	improved plugin duplicate checking
+	fixed RIFF WAVE header writing in converter
+	fixed 8bit png crash in album art plugin (Ian Nartowicz)
+	static builds now use -O3 -D_FORTIFY_SOURCE=0 compiler flags
+	fixed few issues with implementation of the Play button
+	improved tag writing in converter
+	fixed issues with "background jobs are running" warning
+	changed all wiki links to point to the new wiki on github
+	improved streamer event handling, to make the GUI more responsive and stable
+	fixed cleaning up downloaded temporary playlist files
+	Fixed skipping bad FLAC__METADATA_TYPE_CUESHEET blocks in FLAC
+	added support for uppercase .CUE extension
+	added "mpga" extension support (mp3)
+	fixed seeking backwards using hotkeys when in the beginning of a track
+
+version 0.6.1
+	fixed crash in AAC plugin when mp4 file reports 0 samples (e.g. radio rips)
+	fixed libsupc++ linking issues
+	fixed support for gcc<4.5
+	changed description of hotkeys plugin in configure
+	fixed 100% CPU load issues with certain hotkeys
+	fixed opening files from command line into default playlist
+	don't allow spawning multiple instances of converter
+	fixed EQ drawing past the bottom margin
+	fixed progress dialog while loading playlists
+	fixed M3UINF parser
+	reverted MP3 bugfixes which introduced incorrect duration calculation
+	fixed ungrabbing deleted global hotkeys
+	added config option to help debug buffering/streaming
+	ffmpeg plugin can now handle dynamic data format changes
+	fixed rare buffering problem which was causing stuttering for some users
+	fixed running without X and/or without GUI plugin
+	fixed mp3 duration rounding bug
+	fixed incorrect scroll/cursor after deleting playlists
+	added support for loading plugins from ~/.local/lib{32|64}/deadbeef, depending on running deadbeef build version
+	fixed bug imposing 256 byte limit on file pathes in archives
+	fixed column autoresize issues
+	removed libstdc++ hacks from C++ plugins
+	fixed "Remove from disk" menu item not being hidden by corresponding option
+	fixed applying "Pin group titles" config on startup (patch from Christian Boxdörfer)
+	improved charset detection in CUE files, not longer allowing invalid utf-8 to go through
+	paused network streams don't attempt to prebuffer until played
+	unpausing network streams always restarts them
+	prevent loading playlists from archives (treat them like folders)
+	hide the "Hotkeys" tab from preferences if hotkeys plugin is not available
+	don't build shellexecui if not building shellexec
+	fixed memleak when drag-dropping pls/m3u playlists from file managers
+	prevent passing non-utf8 filenames to progress dialog
+	fixed crash when opening invalid VTX files
+	fixed crash when opening invalid WMA files
+	don't delete replaygain info from FLACs when writing tags
+	fixed really old buffer overflow bug in dnd handler (kudos to Megabaks)
+
+version 0.6.0
+	gui layout designer, with a set of widgets to choose from (View -> Design mode, then use right click)
+	new API for creating GUI extension plugins
+	visualization support, spectrum analyzer and scope widgets
+	new hotkeys system, which adds local hotkeys, and many more actions to choose from
+	playlist browser widget: a vertical alternative to playlist tabs
+	album art viewer widget
+	selection properties widget
+	button widget: put custom buttons to main window, and assign any actions to them
+	showing seek time in the bar during seeking
+	added worldofspectrum downloader to artwork plugin (for AY tunes)
+	native flac cuesheet support
+	lots of fixes in MP3 and ID3v2 support
+	improved AAC support
+	fixed the context menu in metadata editor
+	added GTK3.6 filechooser filter regression workaround
+	fixed compatibility with FFMPEG up to 2.0.2
+	added location field to the metadata tab in track properties
+	fixed playlist columns sizers dead zone bug
+	new WMA plugin
+	a ton of stability/responsiveness fixes to mms plugin
+	added customizable content-type mapper, to associate network streams with plugins
+	improved remote playlist loading
+	fixed buffer overflow in m3u plugin
+	subtracks no longer get written to pls and m3u
+	warn a user if he attempts to quit while a job is running (e.g. converter)
+	fixed tabstrip scrolling timer bug
+	added GTK3 touchpad smooth scrolling support (kudos to thesame)
+	added option to always convert 16 bit input signal to 24 bit (Eugene Rudchenko)
+	added experimental Mac OS X support (thanks to Carlos Alberto Nunes for the CoreAudio plugin)
+	improved playlist tab rendering code to work better on HDPI displays
+	fixed rounding error in streamer sleep time calculation - that solves some stuttering problems
+	added OPUS and TAK support in the static build (via ffmpeg)
+
+version 0.5.6
+	wavpack: fixed reload_metadata not clearing old data
+	sndfile: fixed big/little endian byte swap buffer overrun
+	gme: fixed loopcount bugs
+	alsa: fixed race condition bug leading to freezes
+	alac: added new ALAC plugin with proper gapless playback support and other goods
+	aac: lots of bugfixes and improvements, as usual, including half/double duration bugfix, and custom metadata fields support, and audiobook chapters
+	cue and m3u parsers can now skip utf8 BOM
+	automatically fill new/edited column title from the selected column type
+	removed the frame widget around playlist to make scroll bar more accessible in maximized windows
+	restored old GDK drawing in GTK2 plugin, because cairo produces weird shit on older GTK2 versions -- that means, tabs and playlist now look correct again with gtk2.20 and below
+	gtk3 compiling is now enabled by default, if gtk3 sdk is installed
+	--enable/disable-gtkui configure option is removed, now there are only --enable/disable-gtk2 and --enable/disable-gtk3
+	added Menu key support
+	always auto-name playlist by folder name when empty, even if the playlist title is non-default
+	insert/delete key support in track properties (Ruslan Khusnullin)
+	fixed Enter and Esc keys in track properties
+	fixed playlist column auto-resizing in maximized window
+	added user-agent configuration for last.fm, vfs_curl, etc
+	added cp936 charset detection support. it breaks cp1251 detection, so it's done as an option -- look in the preferences (Joey Zheng)
+	show blank instead of "?" when a metadata field is absent
+	fixed local album cover files search order, it's alphabetical now
+	alsa: added a hack/work-around to prevent releasing sound device when a user switches between tracks
+	m3u: improved handling of relative file pathes
+	converter: fixed handling "/" in filenames; fixed tag-writing to files which have special characters
+	fixed resuming last session in shuffle albums mode
+	fixed several libmms freeze/hang/crash bugs
+	vorbis: update waveformat dynamically, so now it's possible to listen the radios which switch between mono and stereo dynamically
+	mp3: fixed samplerate shown in the track properties
+	added work-around for unsupported channel masks to wavpack and sndfile plugins
+	fixed notification cover-art loading for tracks with empty album
+
+version 0.5.5
+	fixed converter GUI plugin crash if the converter plugin not found
+	fixed compiling on FreeBSD
+	fixed race condition bug in streamer
+	fixed flac embedded cover loading bug
+	fixed multiline tag field editing
+	fixed vorbis streaming audio bug
+	fixed numlock handling in global hotkeys setup
+	fixed KP_Return not working
+	fixed filename being ignored in the search window
+	fixed session saving on reboot/logout using XSMP via eggsmclient
+	fixed few missing translation strings
+	fixed many instability issues caused by improper use of pl_find_meta[_raw] calls
+	fixed improper use of GtkStyle in playlist and tabs widgets
+	fixed prev/next handling when playback is stopped
+	fixed random playback bug caused by libsidplay2 calling srand(time(NULL))
+	fixed crash in adplug when playing ADL files
+	fixed crash in aac reload metadata
+	fixed Grandia - Parallel Trippers.gbs crash in GME plugin
+	fixed crash in GME plugin when a file doesn't exist 
+	fixed integer overflow bug in float32->int32 conversion
+	fixed m3u parser string copy bug
+	fixed several dsp bugs in the converter
+	fixed up/down buttons in the converter's dsp preset editor 
+	fixed selected row bugs in dsp preset editors in gtkui preferences and converter
+	fixed parent window of dsp plugin configure window
+	fixed all known issues in gtk3 plugin -- it should be fully working now
+
+version 0.5.4
+	fixed starting the player using "deadbeef" command without path
+	fixed missing ; in deadbeef.desktop
+	fixed big-endian support in sndfile plugin
+
+version 0.5.3
+	m3u: fixed few parser bugs; added audio/x-scpls mime-type support; fixed m3uext support
+	adplug: upgraded to 2.2.1, added fake-surround support and emu selection
+	added ShellExec GUI configuration support (thanks to Azeem Arshad)
+	fixed id3v2 parser whitespace trimming bug
+	"Stop after current" can be reconfigured to be auto-reset each time
+	auto-save EQ state on every change
+	gcc 4.7 compile fix in SID plugin
+	added new Sort->Random feature, to randomize the playlist (thanks to Defusix)
+	converter: fixed writing wav files sized over 2 gigs
+	converter: added support for reconstructing of the folder structrure based on longest common root folder
+	converter: added support for writing files to the source track folders
+	fixed possible hang caused by race condition in the alsa/streamer interaction
+	wildmidi: fixed possible linking errors
+	fixed ignoring cuesheet and log fields in search
+	added support for TXX DATE field as written by FB2K
+	bogus "plugin.so file not found" errors are no longer printed
+	fixed bug in search window causing all tracks to become selected on some actions
+	fixed possible crash when loading corrupted playlist files
+	EQ window will reflect changes in the DSP chain configuration
+	fixed excessive CPU load while streamer is waiting for the last track to finish
+	alsa: fixed sleep time bug, which should improve CPU load (thanks to Martin Panter)
+	alsa: fixed buffer underrun handling problem which was causing sound jittering on slow media like sshfs, cd, etc (thanks to Martin Panter)
+	mp3: added option to disable gapless playback, but improve speed (thanks to Martin Panter)
+	aac: fix to potential reading past the end of array (thanks to Martin Panter)
+	new default cover-art image by TheSame
+	fixed loading m3u/pls over http when the file size is unknown
+	added m3u and pls url mime types (audio/x-mpegurl;audio/x-scpls) to deadbeef.desktop
+
+version 0.5.2
+	fixed reading id3v2 and apev2 tags from raw AAC files
+	fixed proxy authentication bug in vfs_curl plugin
+	added OpenIndian b148 support (Kevin van der Vlist)
+	improved APE performance
+	fixed freeze bug in alsa plugin on x86_64
+	added automatic creation of directory structure to the converter plugin
+	few fixes in random and shuffle modes
+	improved automatic config saving
+	added support for ffmpeg-0.8 (Igor Murzov)
+	fixed rename/remove playlist crash when no playlist was selected
+	last.fm plugin will now split multiline fields when scrobbling
+	few bug fixes / improvements in cuesheet support
+	fixed writing non-ascii id3v1 tags
+	pressing enter/play in paused state will now play selected track (bugfix)
+	fixed content-length handling after redirects in vfs_curl plugin
+	artwork plugin now supports png by default
+	fixed rdb check in aac adts parser, this means improved aac support (by 少昊)
+	fixed rare aac crash
+	added EXTM3U support
+	m3u and pls files are now supported only via Load Playlist menu
+	fix off-by-one error in convstr_id3v2 (gohai)
+	improved support for the case when an M3U file contains URIs of other M3Us
+	improved volumebar tooltip (xent)
+	replaygain preamp improvements (Jan D. Behrens)
+	ignore embedded album cuesheets in single-track files
+	experimental GTK3 support, can be enabled with ./configure --enable-gtk3
+	Vala is not used in this project anymore
+	vorbis plugin will now try to open .OGA files
+	GME plugin: added fadeout support, fixed intro/looping, fixed headerless files support (e.g. some GYM), improved gzipped files detection
+	added auto-resizing support to playlist columns
+	DUMB, AudioOverload, SHN, Mono2Stereo plugins are now back in the main tarball
+	default PulseAudio buffer is set to 8K
+	added FLAC embedded album covers (Tydus)
+	added "Album Artist" support to shuffle albums mode
+	fixed several memory leaks
+	config file parser now supports blank values
+	added %L %X %Z to title formatting for "selected playback length", "selected track count", "current channel configuration" respectively
+	added new commandline switch --gui to select GUI plugin
+	added WM/Year field support to ffmpeg plugin
+	fixed reading embedded covers from id3v2.4
+	added optional "Album Artist" support to last.fm
+	aac: improved duration scanner, fixed infinite loop in mp4ff ATOM_UNKNOWN handler
+	avoid scanning/loading plugins twice when XDG_LOCAL_HOME is the same as install directory (Thynson)
+	improvements in the command line handling code (Eugene Debrev)
+	shellexec now supports quoting strings for more flexibility
+	fixed resampler dsp plugin auto-configuration when the player is started for the 1st time
+	plugin API now allows to extend playlist context menu
+	added "audio/ogg" mime-type support
+	fixed playing mp4/aac files with id3v2 tags
+
+version 0.5.1
+	fixed crash bug after deleting playlists
+	fixed importing fb2k EQ presets
+	fixed bug causing garbage output when DSP plugins were changing channels count
+	added oggenc --ignorelength bug workaround to converter
+	added new mono2stereo DSP plugin
+	fixed numerous bugs in multichannel support, down/upmixing, sampleformat conversions, etc
+	fixed updating window titlebar after editing current track metadata
+	fixed wrong middle mouse button double-click reaction in tray icon
+	fixed scrobbling last track in "don't loop" mode
+	fixed shuffle albums mode when user starts album from the middle
+	added connection timeout to libmms to prevent several-minutes freezes on unresolved hosts
+	fixed inconsistent gui reaction when going from 1st track to previos in "don't loop" mode
+	removed -s option from bundled AAC encoder preset, for compatibility with older versions of FAAC
+	fixed multiple selection "sticking" when pressing left+right mouse buttons, or trying to play missing file
+	fixed syncing converter DSP preset list with the list from Preferences DSP tab
+	FLAC plugin can now play files which report zero size, but have samples in them
+	fixed playback of U8 wav files, and all the libsndfile formats that were not working in raw reading mode
+	added option (on by default) to convert 8 bit samples to 16 bit
+	added automatic samplerate option to SRC plugin
+	restored "use ALSA resampling" option in ALSA plugin
+	fixed several output format bugs in ALSA plugin
+	added support for creating directory tree in converter plugin (Jan D. Behrens)
+	set converter output folder to $HOME when it's empty
+	added new DSP plugin method "can_bypass", to detect when DSP plugins can be bypassed by streamer
+	improved check for multiple instances
+	fixed loading cuesheets from archives
+	added automatic resampler setup on 1st run with empty dsp chain, to simulate 0.4.4 behaviour
+
+version 0.5.0
+	added support for multichannel output
+	added support for output in 8,24,32,float32 bits per sample formats
+	improved replaygain support, with new options
+	new DSP plugin API, allowing format conversions, time stretching and multiple instances
+	configurable DSP chains
+	added VGZ support to GME plugin
+	moved libsamplerate resampler to separate DSP plugin
+	added new playlist plugin API
+	added new plugin for importing and exporting M3U and PLS formats
+	added Edit->Sort By menu entry, with flexible sort options
+	DUMB, AOSDK, SHN plugins are not distributed in deadbeef tarball anymore
+	added "Shuffle albums" mode
+	improved metadata editing, allowing modification of any text fields, including custom fields
+	added support for editing metadata for multiple selected tracks
+	improved Album Artist support
+	added album covers to notifications
+	title formatting now gives access to any track properties
+	new option to auto-rename playlist when adding folders
+	multiple mp3 plugin improvements, both speed and stability
+	extended VFS plugin API to allow archive/container plugins
+	added new ZIP plugin, to add/play files from zip files without unpacking
+	numerous stability fixes in CURL plugin
+	numerous stability fixes in AAC plugin
+	fixed "hotkeys stop working after reboot" problem
+	multiple improvements in playlist sorting and grouping
+	multiple fixes in gtk widget rendering (playlist, tab bar, etc)
+	few improvements in cue parser
+	added OSS device selection to gui configuration
+	reworked plugin list UI, to make bigger description field, and per-plugin license terms
+	added saving/restoring window geometry to track properties and preferences
+	new plugin Converter: convert from any supported format using customizable encoder presets)
+	new plugin Soundtouch: resample, change pitch/tempo, timestretch, etc
+	added support for files larger than 2Gb in size
+	fixed CD Audio plugin freeze after switching CDs
+	added support for switching GUI plugins to preferences window
+	customizable lists of supported file extensions in SNDFILE and FFMPEG plugins
+	fixed rendering of right-to-left text in playlist group titles
+	added description with example to shellexec plugin
+	fixed mp3 gapless playback (via LAME info tags)
+	improved search speed
+	added --play-pause command line option
+
+version 0.4.4
+	fixed race condition in streamer interaction with output plugins
+	atexit and sigterm handlers are not used anymore to prevent playlist corruption when X session is being killed
+	artwork plugin doesn't have direct libcurl dependency anymore
+	merged new translations from LXDE branch
+
+version 0.4.3
+	fixed crash in OSS plugin
+	fixed random crashes caused by upgrading to libcurl-7.21.2
+	fixed metadata editing in non-english locales
+	fixed switching playlists using hotkeys with caps/num/xcb modifiers
+	made preferences window tabs scrollable
+	fixed dts plugin description
+	fixed 'n' hotkey with numlock
+	improved support for icy (shoutcast) protocol
+	fixed ctrl+j (jump to current track) to work correctly with multiple playlists
+	fixed cursor/scroll follows playback to work correctly with multiple playlists
+	session resume does not seek anymore after skipping failed track
+	fixed seekbar flickering
+	bundled libmms library to fix freezes after updating to 0.6
+	blank cue tracks (without titles) are not skipped anymore
+	fixed trailing whitespace handling in cuesheets
+	"middle mouse button to delete playlist" is now default behavior
+	fixed few issues with auto-saving playlist configuration
+	fixed playlist redraw after cddb queries
+
+version 0.4.2
+	added translation into many languages, see translators.txt (LXDE Project)
+	added ability to add custom menu items from plugins (Viktor Semykin)
+	new shellexec plugin to execute shell commands with deadbeef title formatting (Viktor Semykin)
+	added "Look up at last.fm" context menu option (Viktor Semykin)
+	merged in DUMB 0.9.3 (mainly to satisfy debian lawyers)
+	added samplerate conversion quality option to DUMB plugin
+	fixed multichannel WavPack support (David Bryant)
+	decode all valid integer bitdepths and float data from WavPack files (David Bryant)
+	added MIDI player plugin, using WildMidi
+	new MusePack plugin using libmpcdec SV8, with support for multi-chapter files
+	new TTA plugin using TTAv1 library, with 8/16/24bit support and gapless
+	added support for cover artwork embedded in APEv2 tags (David Bryant)
+	added GTKUI option to set status icon volume control sensitivity (gordi-o)
+	added support for custom tray icon and icon themes (gordi-o)
+	new DTS Coherent Acoustics decoder using libdca from VLC project, plays from .wav, .dts, .cpt files
+	added display of multichannel info to statusbar
+	fixed reading of bad (unindented) CUE files
+	new AAC decoder based on FAAD2 and MP4FF libraries
+	new MMS plugin based on libmms, requires FFMPEG plugin to decode WMA content
+	new icon by Sofias
+	new shorten plugin, port of xmms-shn
+	new aosdk plugin, plays several PSF derivatives (PSF,PSF2,DSF,QSF,SSF,SPU)
+	"stop after current" feature no longer does auto-reset every time
+	fixed OSS pause/unpause
+	fixed seeking via global hotkeys
+	improved global hotkeys plugin APIs and GUI configuration
+	added Play/Pause global hotkey
+	customizable IPC socket directory via DDB_SOCKET_DIR env variable (by request from Pandora port people)
+	switched to GME 0.5.5 (keeping compatibility with 0.5.2)
+	added option to hide system tray icon
+	added new format conversions to title formatting (see built-in docs in the player)
+	added support for displaying current track using bold font
+	new playlist can be created by double-clicking or middle-clicking on empty area of tab strip
+	added switching between playlists using [Alt +] 1-9 keys
+	added option to hide "remove from disk" menu item
+	added custom title-formatting for window titlebar and system tray tooltip
+	added tooltip to volumbar, displaying current level in dB
+	added option to follow symlinks while adding files, in the Open File dialogs
+	added option to open/add files in specified named playlist
+	fixed multichannel support in libsndfile, vorbis, tta, ffmpeg plugins
+	added scrolling to current playing track using Ctrl+J and through menu
+	fixed several bugs in mp3 tag parsers
+	fixed initial track prebuffering timing bug, playback starts faster now
+	fixed file->open in paused state, not resuming paused file anymore
+	removed NRG support from cd audio plugin, as it was causing crashes
+	improved album cover caching/updating/reloading
+	added custom file filters to cover art plugin
+	show progress dialog while adding files/folders from commandline
+	added option to remember current track / position / state on exit, and resume after restart
+	added scrolling support to playlist tabs
+	improved Album Artist field support in many file formats
+	got rid of STL code in AdPlug and libsidplay2 libraries
+
+version 0.4.1
+	better default/minimal search window size
+	improved tag reader in ffmpeg plugin + reload metadata support
+	fixed EQ drawing unwanted current value at initialization
+	allow editing previous custom grouping value
+	increased sort speed
+	fixed alsa and oss plugins writing zero samples at start of tracks (TheMaister)
+	fixed recover from suspend in alsa plugin
+	fixed md5 structure buffer overflow
+	added experimental support for gtk3 (2.90), enabled with --enable-gtk3
+	improved oss plugin responsiveness on pause (TheMaister)
+	fixed vfs_curl crashing randomly when loading album art
+	ignore currently paused song when opening new file(s) from commandline
+	fixed playlist moving bugs
+	fixed memory leaks in id3v2 parser
+	increased maximum limit on id3v2 APIC frame size to 2MiB
+	added cd text support (Viktor Semykin)
+	fixed wavpack crash on corrupted files
+	fixed random crash when using File -> Open
+	added remember/restore current folder in playlist save/load dialogs
+	fixed reversing track order after drag-n-drop
+	fixed "Loop single file" mode after track was moved or deleted
+	removed apply button from Global Hotkeys preferences window
+	fixed FLAC bitrate calculation
+	fixed ID3v2 "extra size" field parser
+	fixed memory leaks in vorbis plugin
+	fixed several crash-bugs in mp3 plugin
+	fixed known bugs in album artwork code
+	added automatic backtrace printing on SIGSEGV
+	added multi-track vorbis files support
+	added %C(composer) expansion to title formatting
+	fixed few theming/colors issues
+	fixed replaygain field parsing when reading cuesheets and r.g. peak scale handling (David Bryant)
+	added support for WavPack correction files (David Bryant)
+	fixed loading of album art embedded in ID3v2
+	added MP4 file type to ffmpeg plugin
+
+version 0.4.0
+	multiple tabbed playlists
+	added grouping of tracks using title-formatting strings
+	added Album Cover Art plugin
+	added EQ plugin (SuperEQ library by Naoki Shibata)
+	added basic PulseAudio support
+	added metadata editing support
+	improved global hotkeys plugin, with GUI configurator
+	colors for custom widgets are taken from GTK theme, and user-customizable
+	fixed FreeBSD compatibility problems
+	improved resampling/streaming code
+	enabled .TTA support in ffmpeg plugin
+	improved metadata readers (id3v1, id3v2, apev2)
+	improved Icy (shoutcast) protocol support
+	moved built-in decoders to their own dynamic libraries
+	now it's possible to exclude any plugin from build
+	player remembers scroll positions in playlists between sessions
+	added ability to delete selected files from disk (playlist context menu)
+	added ability to reload metadata (playlist context menu)
+	added AAC 'net streaming support (ffmpeg plugin)
+	faster search and sorting
+	added support for proxy username/password authentication
+	better recognizer of remote pls/m3u files for online radio
+	improved/fixed last.fm plugin
+	OSD notifications about track changes though any notification daemon
+	fixed gapless playback errors
+
+version 0.3.3
+	fixed "unknown response" in command line
+	fixed winkey in global hotkeys plugin
+	fixed crash in id3v1 parser
+	fixed crash in mp3 plugin
+	fixed few bugs/problems in ALSA plugin (now works on wider range of soundcards)
+	fixed playback of multichannel FLAC files
+	fixed 24 bit wavpack playback
+	fixed duration calculation and seeking bugs in mp3 plugin
+	added support for older versions of ffmpeg
+	added OSS(3,4) support
+	experimental FreeBSD support
+	experimental OpenSolaris support
+	improved GUI dialogs
+	added new "File Number" column type
+	added new "File Name" custom column conversion
+	added option to disable nowplaying notifications in lastfm plugin
+	added support for icy metadata (title in shoutcast streams)
+	added experimental (optional) support for notifications using libnotify
+
+version 0.3.2
+	all GTK+ UI code is now in plugin
+	improved main menu layout in GTK UI
+	numerous memory and cpu optimizations
+	fully editable/scriptable columns with sorting
+	native look and feel of playlist widget
+	selection is synchronized between main window and search window
+	keyboard navigation in search window
+	plugins got basic GUI configuration
+	much smoother seekbar
+	compatible with more GTK theme engines
+	improved restore window geometry after minimizing to system tray
+	search window geometry is now saved and restored between sessions
+	flexible nowplaying querying support via command line
+	ALSA code moved to plugin
+	new "nullout" output plugin - good for testing, and as basis for new plugins
+	added template .c file (with comments) for making new decoder plugins
+	updated id3v2 and apev2 parsers to support more metadata types
+	id3v2.2 parser now supports unsynchronization
+	metadata viewer accessible from context menu
+	flac plugin now plays "oga" files (flac in ogg container)
+	ffmpeg plugin, adds formats: m4a (aac,alac), mpc/mp+/mpp, wma, shn, oma, ac3, vqf
+	vtx plugin using libayemu
+	adplug plugin - cmf, rol, hsc, etc (including adlib S3Ms)
+	fixed cuesheet support in mp3 and ogg plugins
+	fixed sse2 issues on i686 architecture
+	added 24-bit ape support (thanks to Rockbox project)
+	added support for custom scrobbler url to last.fm plugin (e.g. libre.fm)
+	added Play Queue funtionality to playlist (context menu)
+	added average/approximate bitrate display to statusbar
+	new "cursor follows playback" feature
+	new "stop after current track" feature
+	.dbpl extension is auto-added when saving playlist
+	improved robustness in http code (handling connection problems, etc)
+		
+version 0.3.1
+	improved header widget drawing and gtkengines compatibility
+	fixed vfs_curl to fetch content size properly again
+	fixed rare memory leak bug in seekbar drawing
+	fixed total playtime display
+	changed buttons to use stock icons
+	implemented reading of embedded cuesheets from ape and wavpack files
+	fixed bug in filename resolving when starting from commandline
+	added possibility to open multiple files from filemanagers
+	fixed random locking/hanging in alsa module
+	loading plugins from $XDG_CONFIG_HOME/.local/lib/deadbeef/ (by Alexey A. Smirnov <alexey.smirnov@gmx.com>)
+	middle click on tray icon toggles pause on current track (by Alex Dedul <rotmer@gmail.com>)
+
+version 0.3.0
+	vfs plugins - for implementing http/ftp streaming, etc
+	improved mpeg (libmad) plugin - eats less memory, works faster
+	added support for icecast and shoutcast streams (mp3, ogg)
+	added support for podcasts (basically, for any files residing on http/ftp)
+	added support for opening pls and m3u files
+	improved about dialog
+	added support for Super (winkey) modifier and multimedia keys in global hotkeys plugin
+	fixed random crash in global hotkeys plugin if key combination was used elsewhere
+	improved cuesheet reader
+	added cd audio support, including cddb/freedb
+	added preferences window
+	new unified config file for everything
+	added total playtime display in statusbar
+	improved plugin build system, displays list of plugins to be built
+	custom columns (through manual config editing yet)
+	column header drag-and-drop
+	improved alsa compatibility
+	player can release sound device while not playing
+	better alsa resume after suspend support
+	support for hardware samplerate conversion (when supported by hardware)
+	support for alsa software resampling
+	improved skipping through bad files
+	fixed replaygain bugs
+	added full file path display via tooltip (optional, disabled by default)
+	statusbar shows info while paused
+	added new buffering icon while streamer loads data
+	added scrolling in playlist while dragging/selecting tracks
+	case-insensitive file filter in gtkfilechooser dialogs
+	added cursor sync between playlist and search windows
+	player saves playlist/config on SIGTERM (should improve things on shutdown)
+
+version 0.2.3.2
+	added winkey (Super) modifier support to hotkeys plugin
+	added multimedia keys support to hotkeys plugin
+	added hex keycodes (as reported by xev) support to hotkeys plugin
+	fixed crashbug in playlist loader when loading playlist files from older releases
+	fixed bug in flac decoder attempting to read past end of file
+	added new workarounds for malformed cusheet files
+
+version 0.2.3.1
+	disabled debug tracing in most modules, to prevent slow-downs
+	fixed streaming bug introduced last moment before 0.2.3
+	fixed redrawing of playing status after resume from pause
+
+version 0.2.3
+	added native gapless playback which works with most decoders
+	added replaygain support
+	added wavpack plugin
+	added libsndfile plugin
+	fixed seeking in paused and stopped states
+	fixed reading of some id3v2 tags
+	changed tag reading order to APEv2->ID3v2->ID3v1
+	improved cuesheet reader
+	fixed interlocking bug in streamer (should reduce skips)
+
+version 0.2.2.2
+	fixed resume after suspend/hibernate
+	fixed cue reader regression
+	fixed another playlist drawing regression
+	fixed stutter at the start of ape tracks
+
+version 0.2.2.1
+	fixed playlist drawing regressions encountered in 0.2.2
+
+version 0.2.2	
+	fixed several build problems reported by users
+	added app icons, updated launcher script
+	proper sse2 detection and usage in ape plugin
+	reduced volumebar range to -50dB
+	horizontal scrolling in playlist
+	pango is now used for ellipsizing
+	case-insensitive search using russian, danish, french and other alphabets
+	vertical scroll is much faster now
+
+version 0.2.1
+	new ape decoder - faster, doesn't crash
+	fixed APEv2 tag reader
+	fixed id3 tag reader on big-endian systems
+	player now builds without errors on big-endian systems
+	memory for HVSC song length database is now allocated on demand
+	fixed icons in system tray menu
+	fixed color detection for column header text
+	improved cuesheet reader (pregap support and better bounds checking)
+
+version 0.2.0
+	plugin API - decoder and misc plugins working, other types are work in progress
+	most decoders are in plugins now, which means that most dependencies are optional (libmad, libFLAC, etc)
+	global hotkeys plugin
+	last.fm scrobbler plugin
+	added help page (under help menu)
+	huge amount of performance tweaks (including power consumption tweaks)
+	cuesheets embedded into FLAC's vorbis comments
+	24 bit flac support
+	$XDG_CONFIG_HOME env variable support
+	APE format support through libdemac
+	launcher (.desktop) file
+	scroll follows playback (optional)
+	no more "?" when no track number in tags
+	fixed seekbar accuracy bug
+	improved cuesheet reader
+	cuesheet text charset detection (utf8, iso8859-1, cp1251)
+	improved mp3 parser (better vbr duration calc, more accurate seeking, etc)
+	fixed bug when starting files from command line using relative paths
+	fixed order/loopmode session saving
+	fixed id3v2.2 reader
+	focus/deiconify window on trayicon click
+	X button no longer minimizes to tray by default (configurable)
+	search is now accessible from menu
+	column sizes are now saved between sessions
+	select multiple folders in "add folder(s)" dialog
+
+version 0.1.1
+	volume control now works on dB scale
+	fixed bug in ogg vorbis decoder that was skipping songs
+	flac decoder now can ignore corrupted files to some extent
+	added shuffle playback mode
+	removed some of the unused code from build scripts
+	player no longer hangs if song change happend near the end of current song
+	playlist redraw fixed for pause/unpause
+	speed optimizations on playlist drawing
+	changed scrollwheel step to 2 rows
+	changed playlist drawing from cairo to gdk, uses proper font now
+	fixed server part to be started earlier, to prevent multiple instances bug
+	fixed several things preventing player to work on ppc64 architecture
+	fixed id3v2 unsynchronized frames reading
+	implemented basic session management, window size/position, volume, playmode are remembered across sessions

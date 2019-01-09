@@ -1,0 +1,8 @@
+if HAVE_LASTFM
+pkglib_LTLIBRARIES = lastfm.la
+lastfm_la_SOURCES = lastfm.c
+lastfm_la_LDFLAGS = -module -avoid-version
+
+lastfm_la_LIBADD = $(LDADD) $(CURL_LIBS)
+AM_CFLAGS = -std=c99 $(CURL_CFLAGS)
+endif

@@ -1,0 +1,145 @@
+Belarusian
+ Максім Тамковіч <quendimax@tut.by>
+
+Bengali
+ Ummey Salma Snigdha <snighda@ankur.org.bd>
+ Israt Jahan <israt@ankur.org.bd>
+
+Bulgarian
+ Радослав <Rec.ku@hotmail.com>
+
+Catalan
+ sisco <sisco.garcia@ubuntu.cat>
+
+Czech
+ Vašek Kovářík <l3d9z6@seznam.cz>
+
+Chinese (Simplified)
+ Yinghua_Wang <wantinghard@gmail.com>
+
+Danish
+ Joe Hansen <joedalton2@yahoo.dk>
+
+German
+ Lutz Thuns <lOtz1009@opensuse.org>.
+ Jan D. Behrens <zykure@web.de>
+
+Greek
+ Giorgos Koutsikos <ragecryx@yahoo.gr>, 2010
+
+Hungarian
+ Peter Polonkai <polesz@nedudu.hu>
+
+English (United Kingdom)
+ Steve (Yorvyk) Cook <yorvik.ubunto@googlemail.com>
+
+Esperanto
+ Kristjan <kristjan.schmidt@googlemail.com>
+
+Spanish
+ depaz <depazzz@gmail.com>
+
+Estonian
+ Anari <anari.jalakas@gmail.com>
+
+Persian
+ Ali <aysabzevar@gmail.com>
+
+Finnish
+ Juhani <juhaninumminen0@gmail.com>
+
+French
+ Cilyan Olowen <gaknar@gmail.com>
+
+Gallegan
+ Miguel Anxo Bouzada <mbouzada@gmail.com>
+
+Hebrew
+ Yaron <sh.yaron@gmail.com>
+
+Croatian
+  Ivica Kolić<ikoli@yahoo.com>
+
+Indonesian
+ Andika Triwidada <andika@gmail.com>
+
+Italian
+ paolo stivanin <paolostivanin@gmail.com>
+
+Japanese
+ Hironao Komatsu <hironao@users.sourceforge.net>
+
+Kazakh
+ Baurzhan Muftakhidinov <baurthefirst@gmail.com>
+
+Central Khmer
+ SatyaN <satyathavy@gmail.com>
+
+Ganda
+ kizito <kbirabwa@yahoo.co.uk>
+
+Lithuanian
+ Algimantas Margevičius <margevicius.algimantas@gmail.com>
+ Julius <zadintuvas@gmail.com>
+
+Bokmal, Norwegian
+ Sam <wilsonsamm@hotmail.com>
+
+Dutch
+ depaz <depazzz@gmail.com>
+
+Polish
+ Grzegorz Gibas <amigib@gmail.com>
+ Łukasz Jasiński <alvarus@alvarus.org>
+
+Portuguese
+ Sérgio Marques <smarquespt@gmail.com>
+
+Portuguese (Brazil)
+ Henrique P. Machado <hpmachado@gnome.org>
+ Sérgio Cipolla <secipolla@gmail.com>
+ 
+Romanian
+ Mișu Moldovan <dumol@xfce.org>
+
+Russian
+ Alexey Yakovenko <wakeroid@gmail.com>
+ Andrei Stepanov
+ Dmitriy Simbiriatin <slpiv@mail.ru>
+
+Sinhala
+ amscata <amith@compsoc.lk>
+
+Slovak
+ Ivan Masár <helix84@centrum.sk>
+
+Slovenian
+ Klemen Košir <klemen.kosir@gmx.com>
+
+Serbian
+ Jay A. Fleming <tito.nehru.naser@gmail.com>
+
+Serbian (latin)
+ Jay A. Fleming <tito.nehru.naser@gmail.com>
+
+Swedish
+ Martin <brother@bsnet.se>
+
+Telugu
+ PraveenIlla <mail2ipn@gmail.com>
+
+Turkish
+ decent <bahadiroglu33@gmail.com>
+
+Uighur
+ Gheyret Kenji <gheyret@gmail.com>
+
+Ukrainian
+ Yarema aka Knedlyk <yupadmin@gmail.com>
+
+Vietnamese
+ Tran Duy Hung <nguyentieuhau@gmail.com>
+
+Traditional Chinese (Taiwan)
+ Hong Jen Yee <pcman.tw@gmail.com>
+
