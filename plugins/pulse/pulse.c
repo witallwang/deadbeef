@@ -23,6 +23,7 @@
 #endif
 
 #include <pulse/simple.h>
+#include <pulse/error.h>
 
 #include <stdint.h>
 #include <unistd.h>
@@ -36,8 +37,7 @@
 #include <assert.h>
 #include "../../deadbeef.h"
 
-//#define trace(...) { fprintf(stdout, __VA_ARGS__); }
-#define trace(fmt,...)
+#define trace(...) { deadbeef->log_detailed (&plugin.plugin, 0, __VA_ARGS__); }
 
 static DB_output_t plugin;
 DB_functions_t * deadbeef;
@@ -52,28 +52,13 @@ static int pulse_terminate;
 static pa_simple *s;
 static pa_sample_spec ss;
 static ddb_waveformat_t requested_fmt;
-static int state;
+static int state = OUTPUT_STATE_STOPPED;
 static uintptr_t mutex;
+static int in_callback;
 
 static int buffer_size;
 
 static void pulse_thread(void *context);
-
-static void pulse_callback(char *stream, int len);
-
-static int pulse_init();
-
-static int pulse_free();
-
-static int pulse_setformat(ddb_waveformat_t *fmt);
-
-static int pulse_play();
-
-static int pulse_stop();
-
-static int pulse_pause();
-
-static int pulse_unpause();
 
 static int pulse_set_spec(ddb_waveformat_t *fmt)
 {
@@ -86,6 +71,9 @@ static int pulse_set_spec(ddb_waveformat_t *fmt)
         plugin.fmt.samplerate = 44100;
         plugin.fmt.channelmask = 3;
     }
+    if (plugin.fmt.samplerate > 192000) {
+        plugin.fmt.samplerate = 192000;
+    }
 
     trace ("format %dbit %s %dch %dHz channelmask=%X\n", plugin.fmt.bps, plugin.fmt.is_float ? "float" : "int", plugin.fmt.channels, plugin.fmt.samplerate, plugin.fmt.channelmask);
 
@@ -96,7 +84,6 @@ static int pulse_set_spec(ddb_waveformat_t *fmt)
     trace ("pulse: channels: %d\n", ss.channels);
 
     // Read samplerate from config
-    //ss.rate = deadbeef->conf_get_int(CONFSTR_PULSE_SAMPLERATE, 44100);
     ss.rate = plugin.fmt.samplerate;
     trace ("pulse: samplerate: %d\n", ss.rate);
 
@@ -141,19 +128,15 @@ static int pulse_set_spec(ddb_waveformat_t *fmt)
     int error;
 
     // Read serveraddr from config
-    deadbeef->conf_lock ();
-    const char * server = deadbeef->conf_get_str_fast (CONFSTR_PULSE_SERVERADDR, NULL);
+    char server[1000];
+    deadbeef->conf_get_str (CONFSTR_PULSE_SERVERADDR, "", server, sizeof (server));
 
-    if (server) {
-        server = strcmp(server, "default") ? server : NULL;
-    }
-
-    s = pa_simple_new(server, "Deadbeef", PA_STREAM_PLAYBACK, dev, "Music", &ss, &channel_map, attr, &error);
-    deadbeef->conf_unlock ();
+    s = pa_simple_new(*server ? server : NULL, "Deadbeef", PA_STREAM_PLAYBACK, dev, "Music", &ss, &channel_map, attr, &error);
 
     if (!s)
     {
-        trace ("pulse_init failed (%d)\n", error);
+        const char *strerr = pa_strerror (error);
+        fprintf (stderr, "pa_simple_new failed: %s\n", strerr);
         return -1;
     }
 
@@ -163,6 +146,7 @@ static int pulse_set_spec(ddb_waveformat_t *fmt)
 static int pulse_init(void)
 {
     trace ("pulse_init\n");
+    deadbeef->mutex_lock (mutex);
     state = OUTPUT_STATE_STOPPED;
     trace ("pulse_terminate=%d\n", pulse_terminate);
     assert (!pulse_terminate);
@@ -172,69 +156,64 @@ static int pulse_init(void)
     }
 
     if (0 != pulse_set_spec(&plugin.fmt)) {
+        deadbeef->mutex_unlock (mutex);
         return -1;
     }
 
     pulse_tid = deadbeef->thread_start(pulse_thread, NULL);
+    deadbeef->mutex_unlock (mutex);
 
     return 0;
 }
 
+static int pulse_free(void);
+static int pulse_play(void);
+static int pulse_pause(void);
+
 static int pulse_setformat (ddb_waveformat_t *fmt)
 {
+    int st = state;
     memcpy (&requested_fmt, fmt, sizeof (ddb_waveformat_t));
-    if (!s) {
-        return -1;
-    }
-    if (!memcmp (fmt, &plugin.fmt, sizeof (ddb_waveformat_t))) {
-        trace ("pulse_setformat ignored\n");
+    if (!s
+        || !memcmp (fmt, &plugin.fmt, sizeof (ddb_waveformat_t))) {
         return 0;
     }
-    trace ("pulse_setformat %dbit %s %dch %dHz channelmask=%X\n", fmt->bps, fmt->is_float ? "float" : "int", fmt->channels, fmt->samplerate, fmt->channelmask);
 
-    int prev_state = state;
-    pulse_stop ();
-    deadbeef->mutex_lock(mutex);
-    pulse_set_spec(fmt);
-    deadbeef->mutex_unlock(mutex);
-    trace ("new format %dbit %s %dch %dHz channelmask=%X\n", plugin.fmt.bps, plugin.fmt.is_float ? "float" : "int", plugin.fmt.channels, plugin.fmt.samplerate, plugin.fmt.channelmask);
-
-    switch (prev_state) {
-    case OUTPUT_STATE_STOPPED:
-        return pulse_stop ();
-    case OUTPUT_STATE_PLAYING:
-        return pulse_play ();
-    case OUTPUT_STATE_PAUSED:
-        if (0 != pulse_play ()) {
-            return -1;
-        }
-        if (0 != pulse_pause ()) {
-            return -1;
-        }
-        break;
+    pulse_free ();
+    pulse_init ();
+    int res = 0;
+    if (st == OUTPUT_STATE_PLAYING) {
+        res = pulse_play ();
     }
-    return 0;
+    else if (st == OUTPUT_STATE_PAUSED) {
+        res = pulse_pause ();
+    }
+
+    return res;
 }
 
 static int pulse_free(void)
 {
     trace("pulse_free\n");
 
+    state = OUTPUT_STATE_STOPPED;
+
+    deadbeef->mutex_lock(mutex);
     if (!pulse_tid) {
+        deadbeef->mutex_unlock(mutex);
         return 0;
     }
 
-    intptr_t tid = pulse_tid;
-    pulse_tid = 0;
-    pulse_terminate = 1;
-    deadbeef->thread_join(tid);
-
-    state = OUTPUT_STATE_STOPPED;
-    if (s)
-    {
-        pa_simple_free(s);
-        s = NULL;
+    if (in_callback) {
+        pulse_terminate = 1;
+        deadbeef->mutex_unlock(mutex);
+        return 0;
     }
+
+    pulse_terminate = 1;
+    deadbeef->mutex_unlock(mutex);
+
+    deadbeef->thread_join(pulse_tid);
 
     return 0;
 }
@@ -242,23 +221,26 @@ static int pulse_free(void)
 static int pulse_play(void)
 {
     trace ("pulse_play\n");
+    deadbeef->mutex_lock (mutex);
     if (!pulse_tid)
     {
         if (pulse_init () < 0)
         {
+            deadbeef->mutex_unlock (mutex);
             return -1;
         }
     }
 
+    pa_simple_flush (s, NULL);
     state = OUTPUT_STATE_PLAYING;
+    deadbeef->mutex_unlock (mutex);
+
     return 0;
 }
 
 static int pulse_stop(void)
 {
     trace ("pulse_stop\n");
-    state = OUTPUT_STATE_STOPPED;
-    deadbeef->streamer_reset(1);
     pulse_free();
     return 0;
 }
@@ -266,11 +248,6 @@ static int pulse_stop(void)
 static int pulse_pause(void)
 {
     trace ("pulse_pause\n");
-    if (state == OUTPUT_STATE_STOPPED)
-    {
-        return -1;
-    }
-
     pulse_free();
     state = OUTPUT_STATE_PAUSED;
     return 0;
@@ -279,14 +256,18 @@ static int pulse_pause(void)
 static int pulse_unpause(void)
 {
     trace ("pulse_unpause\n");
+    deadbeef->mutex_lock (mutex);
     if (state == OUTPUT_STATE_PAUSED)
     {
         if (pulse_init () < 0)
         {
+            deadbeef->mutex_unlock (mutex);
             return -1;
         }
         state = OUTPUT_STATE_PLAYING;
     }
+
+    deadbeef->mutex_unlock (mutex);
 
     return 0;
 }
@@ -297,6 +278,7 @@ static void pulse_thread(void *context)
     prctl(PR_SET_NAME, "deadbeef-pulse", 0, 0, 0, 0);
 #endif
 
+    trace ("pulse thread started \n");
     while (!pulse_terminate)
     {
         if (state != OUTPUT_STATE_PLAYING || !deadbeef->streamer_ok_to_read (-1))
@@ -306,38 +288,49 @@ static void pulse_thread(void *context)
         }
 
         int sample_size = plugin.fmt.channels * (plugin.fmt.bps / 8);
-        int bs = buffer_size;
-        int mod = bs % sample_size;
-        if (mod > 0) {
-            bs -= mod;
+        char buf[buffer_size];
+
+        in_callback = 1;
+        int bytesread = deadbeef->streamer_read(buf, buffer_size);
+        in_callback = 0;
+        if (pulse_terminate) {
+            break;
+        }
+        if (bytesread < 0) {
+            bytesread = 0;
         }
 
-        char buf[bs];
-        pulse_callback (buf, sizeof (buf));
         int error;
 
-        deadbeef->mutex_lock(mutex);
-        int res = pa_simple_write(s, buf, sizeof (buf), &error);
-        deadbeef->mutex_unlock(mutex);
+        int res = 0;
+        if (bytesread > 0) {
+            deadbeef->mutex_lock (mutex);
+            res = pa_simple_write(s, buf, bytesread, &error);
+            deadbeef->mutex_unlock(mutex);
+        }
+
+        if (pulse_terminate) {
+            break;
+        }
 
         if (res < 0)
         {
-            fprintf(stderr, "pulse: failed to write buffer\n");
             usleep(10000);
         }
     }
 
-    pulse_terminate = 0;
-    trace ("pulse_thread finished\n");
-}
-
-static void pulse_callback(char *stream, int len)
-{
-    int bytesread = deadbeef->streamer_read(stream, len);
-    if (bytesread < len)
+    deadbeef->mutex_lock (mutex);
+    state = OUTPUT_STATE_STOPPED;
+    if (s)
     {
-        memset (stream + bytesread, 0, len-bytesread);
+        pa_simple_drain (s, NULL);
+        pa_simple_free(s);
+        s = NULL;
     }
+    pulse_terminate = 0;
+    pulse_tid = 0;
+    deadbeef->mutex_unlock (mutex);
+    trace ("pulse_thread finished\n");
 }
 
 static int pulse_get_state(void)
@@ -369,16 +362,16 @@ DB_plugin_t * pulse_load(DB_functions_t *api)
 #define STR(x) STR_HELPER(x)
 
 static const char settings_dlg[] =
-    "property \"PulseAudio server\" entry " CONFSTR_PULSE_SERVERADDR " default;\n"
+    "property \"PulseAudio server (leave empty for default)\" entry " CONFSTR_PULSE_SERVERADDR " \"\";\n"
     "property \"Preferred buffer size\" entry " CONFSTR_PULSE_BUFFERSIZE " " STR(PULSE_DEFAULT_BUFFERSIZE) ";\n";
 
 static DB_output_t plugin =
 {
-    .plugin.api_vmajor = 1,
-    .plugin.api_vminor = 0,
+    DDB_PLUGIN_SET_API_VERSION
     .plugin.version_major = 0,
     .plugin.version_minor = 1,
     .plugin.type = DB_PLUGIN_OUTPUT,
+//    .plugin.flags = DDB_PLUGIN_FLAG_LOGGING,
     .plugin.id = "pulseaudio",
     .plugin.name = "PulseAudio output plugin",
     .plugin.descr = "At the moment of this writing, PulseAudio seems to be very unstable in many (or most) GNU/Linux distributions.\nIf you experience problems - please try switching to ALSA or OSS output.\nIf that doesn't help - please uninstall PulseAudio from your system, and try ALSA or OSS again.\nThanks for understanding",

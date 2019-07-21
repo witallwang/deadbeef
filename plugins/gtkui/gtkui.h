@@ -32,9 +32,13 @@
 
 #include "../../deadbeef.h"
 
+#if GTK_CHECK_VERSION(3,0,0)
+#include "deadbeefapp.h"
+extern DeadbeefApp *gapp;
+#endif
+
 extern DB_functions_t *deadbeef;
 extern GtkWidget *mainwin;
-extern GtkWidget *searchwin;
 
 extern int gtkui_embolden_selected_tracks;
 extern int gtkui_embolden_tracks;
@@ -55,6 +59,8 @@ extern int gtkui_tabstrip_italic_playing;
 struct _GSList;
 
 extern int gtkui_groups_pinned;
+extern int gtkui_groups_spacing;
+extern int gtkui_listview_busy;
 
 extern const char *gtkui_default_titlebar_playing;
 extern const char *gtkui_default_titlebar_stopped;
@@ -93,23 +99,11 @@ enum {
     COLO_COUNT
 };
 
-void
-theme_set_cairo_source_rgb (cairo_t *cr, int col);
-
-void
-theme_set_fg_color (int col);
-
-void
-theme_set_bg_color (int col);
-
-void
-playlist_refresh (void);
-
-void
-search_refresh (void);
-
 int
 gtkui_add_new_playlist (void);
+
+int
+gtkui_copy_playlist (ddb_playlist_t *plt);
 
 void
 seekbar_draw (GtkWidget *widget, cairo_t *cr);
@@ -145,12 +139,6 @@ int
 gtkui_get_curr_playlist_mod (void);
 
 void
-gtkui_trackinfochanged (DB_playItem_t *it);
-
-gboolean
-redraw_queued_tracks_cb (gpointer plt);
-
-void
 mainwin_toggle_visible (void);
 
 void
@@ -183,4 +171,27 @@ gtkui_get_gui_refresh_rate ();
 void
 gtkui_titlebar_tf_init (void);
 
+void
+gtkui_show_log_window(gboolean show);
+
+void
+gtkui_toggle_log_window(void);
+
+void
+gtkui_mainwin_init(void);
+
+void
+gtkui_mainwin_free(void);
+
+enum GtkuiFileChooserType {
+    GTKUI_FILECHOOSER_OPENFILE,
+    GTKUI_FILECHOOSER_OPENFOLDER,
+    GTKUI_FILECHOOSER_LOADPLAYLIST,
+    GTKUI_FILECHOOSER_SAVEPLAYLIST
+};
+
+GSList *
+show_file_chooser (const gchar          *title,
+                   enum GtkuiFileChooserType type,
+                   gboolean             select_multiple);
 #endif

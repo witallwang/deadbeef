@@ -1,4 +1,95 @@
-version 0.7.2
+version 1.8.1
+	Fixed audio freeze while sorting
+	Fixed crash when resuming playback of a file that's been deleted
+	Fixed error messages when loading PLS playlist with relative paths
+	Fixed adjusting shuffle queue after a user initiated track change
+	Write Album Artist field into Ogg files as "ALBUMARTIST"
+	Load external album covers before embedded
+	Removed the unmaintained sndio plugin
+	Fixed localization of status bar
+	Added experimental subgrouping support in playlist, via using `|||` separator for each subsequent nested group, when using Group by -> Custom (by ToadKing)
+	Added new title formatting functions `$stripprefix` and `$swapprefix` (by ToadKing)
+	Changed supereq DSP configuration to be more compact horizontally and to have more slider precision
+	Updated Repeat and Shuffle hotkey names to match the menus
+	Fixed rounding bug of total playtime in statusbar
+	Fixed design mode splitter handles dragging beyond the window edges
+	Fixed setting album art size based on larger dimension (by ToadKing)
+	Fixed regression causing custom layouts with splitters look wrong
+	Added FLAC plugin option to ignore corrupted stream errors
+	Fixed supereq reentrancy bug, potentially causing crash after changing audio output configuration
+	Fixed reloading replaygain info
+	Fixed writing replaygain info to APEv2 tags
+
+version 1.8.0
+	added Opus support
+	added ReplayGain Scanner
+	added proper tracks+cue support (in cooperation with wdlkmpx)
+	added/improved MP4 tag reading and writing
+	added loading embedded album art from MP4 files
+	added File Copy and File Move converter presets
+	added Log Window displaying error information from various sources (in cooperation with Saivert)
+	improved replaygain configuration and runtime behavior
+	fixed replaygain support in Converter
+	improved reading, storing and editing multi-value tag fields
+	added GBS support to Game_Music_Emu (kode54)
+	added SGC support to Game_Music_Emu
+	fixed clipping prevention for mp3, replaygain is applied before clipping
+	fixed vfz_zip handling of colons in filenames
+	fixed wma decoding precision error
+	fixed issues with playing very short files
+	fixed a number of known issues in the Converter
+	UI splitter proportional resizing (cboxdoerfer)
+	added to title formatting: $num, %_path_raw%, %_playlist_name%, $replace, $upper, $lower, %playback_bitrate%, $repeat, $insert, $len, <<<>>>, >>><<<, $pad, $pad_right (saivert)
+	added support for dim and bright text in playlist columns (saivert)
+	improved detecting GTK theme colors for custom widgets
+	added new multiline tag editing dialog for individual values
+	added Copy&Paste in playlist (cboxdoerfer)
+	added localization support for plugin UI
+	added Drag'n'drop support from deadbeef to other applications (cboxdoerfer)
+	fixed a number of ogg file tagging issues (kode54)
+	fixed multiple crash bugs in AdPlug plugin
+	added UMX module support, ported from foo_dumb
+	updated Game_Music_Emu and VGMplay (kode54)
+	added an option to Converter, to copy the files if the format doesn't change
+	added a configuration option `gtkui.start_hidden`, to start the player with hidden main window (Radics Péter)
+	added a converter option to retag the files after copying
+	added a context menu action for duplicating playlists (Alex Couture-Beil)
+	fixed a number of fadeout issues in Game_Music_Emu
+	fixed musepack seeking issue
+	fixed loading album covers from ID3v2.2
+	fixed mp3 bitrate calculation bug for incomplete files with LAME header
+	improved large file support with many internal values converted to use 64 bits for sample counts
+	use title formatting for displaying status bar text
+	added %seltime% title formatting value, for displaying playback time of selected tracks (Thomas Ross)
+	added reading SONGWRITER field from cue sheets (wdlkmpx)
+	added playlist group spacing configuration (saivert)
+	improved mp3 USLT lyrics support (in copperation with Ignat Loskutov)
+	improved playlist browser configurability (Jakub Wasylków)
+	added hotkey action for opening track properties (Jakub Wasylków)
+	added hotkey actions for add/remove/toggle in playqueue (Jakub Wasylków)
+	added --volume command line option (Saivert)
+	improved ISRC and subindex handling in CUE (wdlkmpx)
+	added hotkey actions to move selected tracks up/down (Jakub Wasylków)
+	fixed memory access bugs in config handling and supereq (github/tsowa)
+	added charset detection based on the whole ID3v2 tag content
+	added automatic charset detection for cdtext (Jakub Wasylków)
+	added configuration for output samplerate setting
+	removed fast scanning mp3 option, since it was too inaccurate
+	improved detection of PSF files, to disambiguate them against other files which use the same extension
+	added Edit In Place and Crop options to the track properties menu
+	fixed WildMidi playback of some MID files playing more than 1024 simultaneous notes
+	fixed playing stereo APE files with single-channel silence
+	added wavpack version 5 support with DSD
+	fixed performance issue when reading AdPlug's HSC files
+	fixed loading audio files from GVFS volumes
+	fixed handling of cuesheets in zip files
+	fixed writing tags into tiny ogg files
+	fixed handling FLAC files with huge block sizes over 100KB
+	replaced mp3 parsing code with the new library, which is more reliable and tested, and can handle even more obscure mp3 files
+	renamed Looping and Order menus to Repeat and Shuffle, respectively
+	fixed loading larger Songlenths.txt in sid plugin, and added support for Songlengths.md5
+
+version 0.7.2 
 	fixed title formatting %filename% crash
 	fixed streaming of aac content in mp4 container
 	added https:// support to vfs_curl (Viktor Semykin)
@@ -11,7 +102,7 @@ version 0.7.2
 	fixed path separator '/' escaping regression in converter
 	moved ffmpeg plugin to the end of plugin list, to prevent conflicts with other input plugins
 	added $fix_eol, $hex title formatting
-	fixed importing [, ] and \n characters from old configuration files
+	fixed importing \[, \] and \n characters from old configuration files
 	fixed "Group by artist/date/title" title formatting
 	added enumerating/exposing of all supported file extensions to ffmpeg plugin (Xinya Zhang)
 	fixed handling of ':' in file path in vfs_zip plugin

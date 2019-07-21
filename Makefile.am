@@ -1,5 +1,6 @@
 SUBDIRS = pixmaps\
 		  icons\
+		  shared\
 		  ${PLUGINS_DIRS}\
 		  po\
 		  intl
@@ -19,9 +20,11 @@ DISTCLEANFILES = \
 deadbeef_SOURCES =\
 	main.c common.h deadbeef.h\
 	plugins.c plugins.h moduleconf.h\
-	playlist.c playlist.h \
+	cueutil.c cueutil.h playlist.c playlist.h \
 	plmeta.c pltmeta.c pltmeta.h\
 	streamer.c streamer.h\
+	dsp.c dsp.h\
+	streamreader.c streamreader.h\
 	premix.c premix.h\
 	messagepump.c messagepump.h\
 	conf.c  conf.h\
@@ -44,7 +47,8 @@ deadbeef_SOURCES =\
 	escape.c escape.h\
 	tf.c tf.h\
 	playqueue.c playqueue.h\
-	sort.c sort.h
+	sort.c sort.h\
+	logger.c logger.h
 	
 #	ConvertUTF/ConvertUTF.c ConvertUTF/ConvertUTF.h
 
@@ -60,12 +64,11 @@ docsdir = $(docdir)
 
 docs_DATA = README help.txt about.txt translators.txt ChangeLog\
 	COPYING.GPLv2 COPYING.LGPLv2.1\
-	translation/help.ru.txt\
-	translation/help.pt_BR.txt
+	translation/help.ru.txt
 
 desktopdir = $(datadir)/applications
 desktop_DATA = deadbeef.desktop
 
-EXTRA_DIST = $(docs_DATA) $(desktop_DATA) $(INTLTOOL_FILES) translation/extra.c sj_to_unicode.h examples/decoder_template.c examples/dsp_template.c yasmwrapper.sh
+EXTRA_DIST = $(docs_DATA) $(desktop_DATA) $(INTLTOOL_FILES) translation/extra.c translation/plugins.c sj_to_unicode.h examples/decoder_template.c examples/dsp_template.c yasmwrapper.sh
 
 ACLOCAL_AMFLAGS = -I m4

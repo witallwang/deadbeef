@@ -174,13 +174,13 @@ fill_pltbrowser_rows (gpointer user_data)
         deadbeef->plt_get_title (plt, title_temp, sizeof (title_temp));
         if (plt_active == i && highlight_curr) {
             if (output_state == OUTPUT_STATE_PAUSED) {
-                snprintf (title, sizeof (title), "%s%s", title_temp, " (paused)");
+                snprintf (title, sizeof (title), "%s%s", title_temp, _(" (paused)"));
             }
             else if (output_state == OUTPUT_STATE_STOPPED) {
-                snprintf (title, sizeof (title), "%s%s", title_temp, " (stopped)");
+                snprintf (title, sizeof (title), "%s%s", title_temp, _(" (stopped)"));
             }
             else {
-                snprintf (title, sizeof (title), "%s%s", title_temp, " (playing)");
+                snprintf (title, sizeof (title), "%s%s", title_temp, _(" (playing)"));
             }
         }
         else {
@@ -405,13 +405,13 @@ on_popup_header_duration_clicked (GtkCheckMenuItem *checkmenuitem, gpointer user
 }
 
 static gboolean
-on_pltbrowser_header_popup_menu (gpointer user_data)
+on_pltbrowser_header_popup_menu (GtkWidget *widget, gpointer user_data)
 {
     w_pltbrowser_t *w = user_data;
     GtkWidget *popup = gtk_menu_new ();
-    GtkWidget *playing = gtk_check_menu_item_new_with_mnemonic ("Playing");
-    GtkWidget *items = gtk_check_menu_item_new_with_mnemonic ("Items");
-    GtkWidget *duration = gtk_check_menu_item_new_with_mnemonic ("Duration");
+    GtkWidget *playing = gtk_check_menu_item_new_with_mnemonic (_("Playing"));
+    GtkWidget *items = gtk_check_menu_item_new_with_mnemonic (_("Items"));
+    GtkWidget *duration = gtk_check_menu_item_new_with_mnemonic (_("Duration"));
     gtk_check_menu_item_set_active (GTK_CHECK_MENU_ITEM (playing), deadbeef->conf_get_int ("gtkui.pltbrowser.show_playing_column", 0));
     gtk_check_menu_item_set_active (GTK_CHECK_MENU_ITEM (items), deadbeef->conf_get_int ("gtkui.pltbrowser.show_items_column", 0));
     gtk_check_menu_item_set_active (GTK_CHECK_MENU_ITEM (duration), deadbeef->conf_get_int ("gtkui.pltbrowser.show_duration_column", 0));
@@ -425,7 +425,8 @@ on_pltbrowser_header_popup_menu (gpointer user_data)
     g_signal_connect_after ((gpointer) playing, "toggled", G_CALLBACK (on_popup_header_playing_clicked), w);
     g_signal_connect_after ((gpointer) items, "toggled", G_CALLBACK (on_popup_header_items_clicked), w);
     g_signal_connect_after ((gpointer) duration, "toggled", G_CALLBACK (on_popup_header_duration_clicked), w);
-    gtk_menu_popup (GTK_MENU (popup), NULL, NULL, NULL, w, 0, gtk_get_current_event_time ());
+    gtk_menu_attach_to_widget (GTK_MENU (popup), GTK_WIDGET (widget), NULL);
+    gtk_menu_popup (GTK_MENU (popup), NULL, NULL, NULL, NULL, 0, gtk_get_current_event_time ());
     return TRUE;
 }
 
@@ -579,7 +580,7 @@ on_pltbrowser_header_clicked (GtkWidget       *widget,
     }
     if (event->type == GDK_BUTTON_PRESS) {
         if (event->button == 3) {
-            return on_pltbrowser_header_popup_menu (w);
+            return on_pltbrowser_header_popup_menu (widget, w);
         }
     }
     return FALSE;
@@ -600,6 +601,7 @@ plt_get_title_wrapper (int plt, char *buffer, int len) {
         *end = 0;
     }
 }
+*/
 
 static gboolean
 on_pltbrowser_key_press_event (GtkWidget *widget,
@@ -607,21 +609,48 @@ on_pltbrowser_key_press_event (GtkWidget *widget,
                                gpointer   user_data)
 {
     w_pltbrowser_t *w = user_data;
-    if (event->keyval == GDK_F2) {
-        // rename selected playlist
-        GtkTreePath *path;
-        GtkTreeViewColumn *col;
-        gtk_tree_view_get_cursor (GTK_TREE_VIEW (w->tree), &path, NULL);
-        col = gtk_tree_view_get_column (GTK_TREE_VIEW (w->tree), COL_NAME);
-        if (!path || !col) {
-            return FALSE;
+    if (event->state & GDK_CONTROL_MASK) {
+        int row = get_treeview_cursor_pos (GTK_TREE_VIEW (w->tree));
+        if (row >= 0) {
+            deadbeef->pl_lock ();
+            ddb_playlist_t *plt = deadbeef->plt_get_for_idx (row);
+            deadbeef->pl_unlock ();
+            if (plt) {
+                int res = 0;
+                if (event->keyval == GDK_c) {
+                    gtkui_plugin->copy_selection (plt, DDB_ACTION_CTX_PLAYLIST);
+                    res = 1;
+                }
+                else if (event->keyval == GDK_v) {
+                    gtkui_plugin->paste_selection (plt, DDB_ACTION_CTX_PLAYLIST);
+                    res = 1;
+                }
+                else if (event->keyval == GDK_x) {
+                    gtkui_plugin->cut_selection (plt, DDB_ACTION_CTX_PLAYLIST);
+                    res = 1;
+                }
+                deadbeef->plt_unref (plt);
+                return res;
+            }
         }
-        // start editing
-        gtk_tree_view_set_cursor_on_cell (GTK_TREE_VIEW (w->tree), path, col, NULL, TRUE);
     }
+
+    //if (event->keyval == GDK_F2) {
+    //    // rename selected playlist
+    //    GtkTreePath *path;
+    //    GtkTreeViewColumn *col;
+    //    gtk_tree_view_get_cursor (GTK_TREE_VIEW (w->tree), &path, NULL);
+    //    col = gtk_tree_view_get_column (GTK_TREE_VIEW (w->tree), COL_NAME);
+    //    if (!path || !col) {
+    //        return FALSE;
+    //    }
+    //    // start editing
+    //    gtk_tree_view_set_cursor_on_cell (GTK_TREE_VIEW (w->tree), path, col, NULL, TRUE);
+    //}
     return FALSE;
 }
 
+/*
 static void
 on_pltbrowser_cell_edititing_started (GtkCellRenderer *renderer,
                                       GtkCellEditable *editable,
@@ -716,6 +745,7 @@ on_pltbrowser_drag_begin_event          (GtkWidget       *widget,
                                         gpointer user_data)
 {
     drag_row_active = TRUE;
+    return FALSE;
 }
 
 static gboolean
@@ -727,6 +757,7 @@ on_pltbrowser_drag_end_event          (GtkWidget       *widget,
                                         gpointer user_data)
 {
     drag_row_active = FALSE;
+    return FALSE;
 }
 
 static gboolean
@@ -767,7 +798,8 @@ on_pltbrowser_button_press_event       (GtkWidget       *widget,
         if (event->button == 3) {
             int row_clicked = get_treeview_row_at_pos (GTK_TREE_VIEW (widget), event->x, event->y);
             GtkWidget *menu = gtkui_plugin->create_pltmenu (row_clicked);
-            gtk_menu_popup (GTK_MENU (menu), NULL, NULL, NULL, widget, 0, gtk_get_current_event_time());
+            gtk_menu_attach_to_widget (GTK_MENU (menu), GTK_WIDGET (widget), NULL);
+            gtk_menu_popup (GTK_MENU (menu), NULL, NULL, NULL, NULL, event->button, gtk_get_current_event_time());
             return TRUE;
         }
     }
@@ -824,7 +856,8 @@ on_pltbrowser_popup_menu (GtkWidget *widget, gpointer user_data) {
     if (row >= 0) {
         int plt_idx = row;
         GtkWidget *menu = gtkui_plugin->create_pltmenu (plt_idx);
-        gtk_menu_popup (GTK_MENU (menu), NULL, NULL, NULL, widget, 0, gtk_get_current_event_time());
+        gtk_menu_attach_to_widget (GTK_MENU (menu), GTK_WIDGET (widget), NULL);
+        gtk_menu_popup (GTK_MENU (menu), NULL, NULL, NULL, NULL, 0, gtk_get_current_event_time());
         return TRUE;
     }
     return FALSE;
@@ -832,7 +865,8 @@ on_pltbrowser_popup_menu (GtkWidget *widget, gpointer user_data) {
 
 static void
 on_pltbrowser_row_activated (GtkTreeView *tree_view, GtkTreePath *path, GtkTreeViewColumn *column, gpointer user_data) {
-    deadbeef->sendmessage (DB_EV_PLAY_NUM, 0, 0, 0);
+    if (deadbeef->conf_get_int ("gtkui.pltbrowser.play_on_double_click", 1))
+        deadbeef->sendmessage (DB_EV_PLAY_NUM, 0, 0, 0);
 }
 
 static void
@@ -936,11 +970,9 @@ w_pltbrowser_create (void) {
     g_signal_connect ((gpointer) w->tree, "drag_motion",
             G_CALLBACK (on_pltbrowser_drag_motion_event),
             w);
-    /*
     g_signal_connect ((gpointer) w->tree, "key_press_event",
             G_CALLBACK (on_pltbrowser_key_press_event),
             w);
-    */
 
     gtkui_plugin->w_override_signals (w->base.widget, w);
 
@@ -969,11 +1001,11 @@ pltbrowser_disconnect (void) {
 static const char pltbrowser_settings_dlg[] =
     "property \"Close playlists with middle mouse button\" checkbox gtkui.pltbrowser.mmb_delete_playlist 0;\n"
     "property \"Highlight current playlist\" checkbox gtkui.pltbrowser.highlight_curr_plt 0;\n"
+    "property \"Play on double-click\" checkbox gtkui.pltbrowser.play_on_double_click 1;\n"
 ;
 
 static DB_misc_t plugin = {
-    .plugin.api_vmajor = 1,
-    .plugin.api_vminor = 5,
+    DDB_PLUGIN_SET_API_VERSION
     .plugin.version_major = 1,
     .plugin.version_minor = 0,
     .plugin.type = DB_PLUGIN_MISC,

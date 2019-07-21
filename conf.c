@@ -33,9 +33,7 @@
 #include <inttypes.h>
 #include <errno.h>
 #include <unistd.h>
-#if HAVE_SYS_CDEFS_H
-#include <sys/cdefs.h>
-#endif
+#include <limits.h>
 #include <sys/stat.h>
 #include "conf.h"
 #include "threading.h"
@@ -44,8 +42,9 @@
 #define min(x,y) ((x)<(y)?(x):(y))
 
 static DB_conf_item_t *conf_items;
-static int changed = 0;
+static int changed;
 static uintptr_t mutex;
+static int disable_saving;
 
 void
 conf_init (void) {
@@ -83,14 +82,15 @@ conf_load (void) {
     char fname[l + sizeof(configfile)];
     memcpy (fname, dbconfdir, l);
     memcpy (fname + l, configfile, sizeof (configfile));
-    FILE *fp = fopen (fname, "rt");
+    FILE *fp = fopen (fname, "rb");
     if (!fp) {
-        fprintf (stderr, "failed to load config file\n");
+        // we're not logging the error when config could not be loaded -- it's the first run
         fp = fopen (fname, "w+b");
         if (!fp) {
+            // we do log the error when we could not create the file
+            trace_err ("Configuration file could not be created: %s\n", fname);
             return -1;
         }
-        fprintf (stderr, "created an empty config\n");
         fclose (fp);
         return 0;
     }
@@ -104,7 +104,9 @@ conf_load (void) {
     uint8_t *buffer = malloc (l+1);
     if (l != fread (buffer, 1, l, fp)) {
         free (buffer);
-        fprintf (stderr, "failed to read entire config file to memory\n");
+        trace_err ("failed to read entire config file to memory\n");
+        fclose (fp);
+        conf_unlock ();
         return -1;
     }
     buffer[l] = 0;
@@ -130,7 +132,7 @@ conf_load (void) {
             p++;
         }
         if (!*p) {
-            fprintf (stderr, "error in config file line %d\n", line);
+            trace_err ("error in config file line %d\n", line);
             str = estr+1;
             continue;
         }
@@ -158,12 +160,15 @@ conf_load (void) {
 
 int
 conf_save (void) {
+    if (disable_saving) {
+        return 0;
+    }
     char tempfile[PATH_MAX];
     char str[PATH_MAX];
     FILE *fp;
     int err;
 
-    if (!changed) {
+    if (!changed || !mutex) {
         return 0;
     }
 
@@ -172,15 +177,15 @@ conf_save (void) {
 
     conf_lock ();
     changed = 0;
-    fp = fopen (tempfile, "w+t");
+    fp = fopen (tempfile, "w+b");
     if (!fp) {
-        fprintf (stderr, "failed to open config file for writing\n");
+        trace_err ("failed to open config file %s for writing\n", tempfile);
         conf_unlock ();
         return -1;
     }
     for (DB_conf_item_t *it = conf_items; it; it = it->next) {
         if (fprintf (fp, "%s %s\n", it->key, it->value) < 0) {
-            fprintf (stderr, "failed to write to file %s (%s)\n", tempfile, strerror (errno));
+            trace_err ("failed to write to file %s (%s)\n", tempfile, strerror (errno));
             fclose (fp);
             conf_unlock ();
             return -1;
@@ -189,7 +194,7 @@ conf_save (void) {
     fclose (fp);
     err = rename (tempfile, str);
     if (err != 0) {
-        fprintf (stderr, "config rename %s -> %s failed: %s\n", tempfile, str, strerror (errno));
+        trace_err ("config rename %s -> %s failed: %s\n", tempfile, str, strerror (errno));
     }
     else {
         chmod (str, 0600);
@@ -243,24 +248,27 @@ float
 conf_get_float (const char *key, float def) {
     conf_lock ();
     const char *v = conf_get_str_fast (key, NULL);
+    float res = v ? atof (v) : def;
     conf_unlock ();
-    return v ? atof (v) : def;
+    return res;
 }
 
 int
 conf_get_int (const char *key, int def) {
     conf_lock ();
     const char *v = conf_get_str_fast (key, NULL);
+    int res = v ? atoi (v) : def;
     conf_unlock ();
-    return v ? atoi (v) : def;
+    return res;
 }
 
 int64_t
 conf_get_int64 (const char *key, int64_t def) {
     conf_lock ();
     const char *v = conf_get_str_fast (key, NULL);
+    int64_t res = v ? atoll (v) : def;
     conf_unlock ();
-    return v ? atoll (v) : def;
+    return res;
 }
 
 DB_conf_item_t *
@@ -375,4 +383,9 @@ conf_remove_items (const char *key) {
         conf_items = next;
     }
     conf_unlock ();
+}
+
+void
+conf_enable_saving (int enable) {
+    disable_saving = !enable;
 }

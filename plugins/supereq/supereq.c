@@ -80,14 +80,6 @@ supereq_process (ddb_dsp_context_t *ctx, float *samples, int frames, int maxfram
             supereq_reset (ctx);
         }
         supereq->enabled = ctx->enabled;
-
-// this causes a glitch on 1st track
-//        DB_playItem_t *it = deadbeef->streamer_get_playing_track ();
-//        if (it) {
-//            float playpos = deadbeef->streamer_get_playpos ();
-//            deadbeef->streamer_seek (playpos);
-//            deadbeef->pl_item_unref (it);
-//        }
     }
     if (supereq->params_changed) {
         recalc_table (supereq);
@@ -251,30 +243,29 @@ supereq_close (ddb_dsp_context_t *ctx) {
 
 static const char settings_dlg[] =
     "property \"\" hbox[19] hmg fill expand border=0 spacing=8 height=200;\n"
-        "property \"Preamp\" vscale[20,-20,1] vert 0 0;\n"
-        "property \"55 Hz\" vscale[20,-20,1] vert 1 0;\n"
-        "property \"77 Hz\" vscale[20,-20,1] vert 2 0;\n"
-        "property \"110 Hz\" vscale[20,-20,1] vert 3 0;\n"
-        "property \"156 Hz\" vscale[20,-20,1] vert 4 0;\n"
-        "property \"220 Hz\" vscale[20,-20,1] vert 5 0;\n"
-        "property \"311 Hz\" vscale[20,-20,1] vert 6 0;\n"
-        "property \"440 Hz\" vscale[20,-20,1] vert 7 0;\n"
-        "property \"622 Hz\" vscale[20,-20,1] vert 8 0;\n"
-        "property \"880 Hz\" vscale[20,-20,1] vert 9 0;\n"
-        "property \"1.2 kHz\" vscale[20,-20,1] vert 10 0;\n"
-        "property \"1.8 kHz\" vscale[20,-20,1] vert 11 0;\n"
-        "property \"2.5 kHz\" vscale[20,-20,1] vert 12 0;\n"
-        "property \"3.5 kHz\" vscale[20,-20,1] vert 13 0;\n"
-        "property \"5 kHz\" vscale[20,-20,1] vert 14 0;\n"
-        "property \"7 kHz\" vscale[20,-20,1] vert 15 0;\n"
-        "property \"10 kHz\" vscale[20,-20,1] vert 16 0;\n"
-        "property \"14 kHz\" vscale[20,-20,1] vert 17 0;\n"
-        "property \"20 kHz\" vscale[20,-20,1] vert 18 0;\n"
+        "property \"Preamp\" vscale[20,-20,0.5] vert 0 0;\n"
+        "property \"55 Hz\" vscale[20,-20,0.5] vert 1 0;\n"
+        "property \"77 Hz\" vscale[20,-20,0.5] vert 2 0;\n"
+        "property \"110 Hz\" vscale[20,-20,0.5] vert 3 0;\n"
+        "property \"156 Hz\" vscale[20,-20,0.5] vert 4 0;\n"
+        "property \"220 Hz\" vscale[20,-20,0.5] vert 5 0;\n"
+        "property \"311 Hz\" vscale[20,-20,0.5] vert 6 0;\n"
+        "property \"440 Hz\" vscale[20,-20,0.5] vert 7 0;\n"
+        "property \"622 Hz\" vscale[20,-20,0.5] vert 8 0;\n"
+        "property \"880 Hz\" vscale[20,-20,0.5] vert 9 0;\n"
+        "property \"1.2 kHz\" vscale[20,-20,0.5] vert 10 0;\n"
+        "property \"1.8 kHz\" vscale[20,-20,0.5] vert 11 0;\n"
+        "property \"2.5 kHz\" vscale[20,-20,0.5] vert 12 0;\n"
+        "property \"3.5 kHz\" vscale[20,-20,0.5] vert 13 0;\n"
+        "property \"5 kHz\" vscale[20,-20,0.5] vert 14 0;\n"
+        "property \"7 kHz\" vscale[20,-20,0.5] vert 15 0;\n"
+        "property \"10 kHz\" vscale[20,-20,0.5] vert 16 0;\n"
+        "property \"14 kHz\" vscale[20,-20,0.5] vert 17 0;\n"
+        "property \"20 kHz\" vscale[20,-20,0.5] vert 18 0;\n"
 ;
 
 static DB_dsp_t plugin = {
-    .plugin.api_vmajor = 1,
-    .plugin.api_vminor = 0,
+    DDB_PLUGIN_SET_API_VERSION
     .plugin.version_major = 1,
     .plugin.version_minor = 0,
     .plugin.type = DB_PLUGIN_DSP,

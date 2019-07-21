@@ -33,9 +33,9 @@
 #include <ctype.h>
 #include "oggedit_internal.h"
 
-uint8_t *oggedit_vorbis_channel_map(const int channel_count)
+uint8_t *oggedit_vorbis_channel_map(const unsigned channel_count)
 {
-    size_t map_size = channel_count * sizeof(uint8_t);
+    unsigned map_size = channel_count * sizeof(uint8_t);
     uint8_t *map = malloc(map_size);
     if (!map)
         return NULL;
@@ -56,13 +56,14 @@ uint8_t *oggedit_vorbis_channel_map(const int channel_count)
     }
 }
 
+// FIXME: oggedit_map_tag expects key to be writable, and uppercases it in-place, returning the result
 const char *oggedit_map_tag(char *key, const char *in_or_out)
 {
     typedef struct {
         const char *tag;
         const char *meta;
     } key_t;
-    const key_t keys[] = {
+    static const key_t keys[] = {
         /* Permanent named tags in DeaDBeef */
 //        {.tag = "ARTIST",         .meta = "artist"},
 //        {.tag = "TITLE",          .meta = "title"},
@@ -103,7 +104,7 @@ const char *oggedit_map_tag(char *key, const char *in_or_out)
 //        {.tag = "ENCODED-BY",     .meta = "Encoded-by"},
 //        {.tag = "ENCODING",       .meta = "Encoding"},
         /* Other tags */
-//        {.tag = "ALBUMARTIST",    .meta = "Albumartist"},
+        {.tag = "ALBUMARTIST",    .meta = "Album Artist"},
 //        {.tag = "ALBUM ARTIST",   .meta = "Album artist"},
 //        {.tag = "BAND",           .meta = "Band"},
 //        {.tag = "COMPILATION",    .meta = "Compilation"},
@@ -121,7 +122,7 @@ const char *oggedit_map_tag(char *key, const char *in_or_out)
 
     /* Upper-case all Vorbis Comment tag names */
     if (*in_or_out == 'm')
-        for (size_t i = 0; key[i]; i++)
+        for (unsigned i = 0; key[i]; i++)
             key[i] = toupper(key[i]);
 
     return key;

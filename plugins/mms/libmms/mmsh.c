@@ -1,21 +1,24 @@
 /*
  * Copyright (C) 2002-2003 the xine project
+ * Copyright (C) 2004-2012 the libmms project
+ * 
+ * This file is part of LibMMS, an MMS protocol handling library.
+ * This file was originally a part of xine, a free video player.
  *
- * This file is part of xine, a free video player.
+ * Libmms is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU Library General Public License as
+ * published by the Free Software Foundation; either version 2 of the
+ * License, or (at your option) any later version.
  *
- * xine is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
- *
- * xine is distributed in the hope that it will be useful,
+ * Libmms is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA
+ * You should have received a copy of the GNU Library General Public
+ * License along with this program; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+ * 02111-1307, USA
  *
  * $Id: mmsh.c,v 1.16 2007/12/11 20:50:43 jwrdegoede Exp $
  *
@@ -250,46 +253,122 @@ static off_t fallback_io_write(void *data, int socket, char *buf, off_t num)
 
 static int fallback_io_tcp_connect(void *data, const char *host, int port, int *need_abort)
 {
-  
-  struct hostent *h;
-  int i, s;
-  
-  h = gethostbyname(host);
-  if (h == NULL) {
-    lprintf("mmsh: unable to resolve host: %s\n", host);
-    return -1;
-  }
 
-  s = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);  
-  if (s == -1) {
-    lprintf("mmsh: failed to create socket: %s\n", strerror(errno));
-    return -1;
-  }
+    struct hostent *h;
+    int i, s;
 
-  if (fcntl (s, F_SETFL, fcntl (s, F_GETFL) & ~O_NONBLOCK) == -1) {
-    lprintf("mmsh: failed to set socket flags: %s\n", strerror(errno));
-    return -1;
-  }
-
-  for (i = 0; h->h_addr_list[i]; i++) {
-    struct in_addr ia;
-    struct sockaddr_in sin;
- 
-    memcpy (&ia, h->h_addr_list[i], 4);
-    sin.sin_family = AF_INET;
-    sin.sin_addr   = ia;
-    sin.sin_port   = htons(port);
-    
-    if (connect(s, (struct sockaddr *)&sin, sizeof(sin)) ==-1 && errno != EINPROGRESS) {
-      continue;
+#ifdef USE_GETHOSTBYNAME
+    h = gethostbyname(host);
+    if (h == NULL) {
+        lprintf("mms: unable to resolve host: %s\n", host);
+        return -1;
     }
-    
-    return s;
-  }
-  close(s);
-  return -1;
-}
+    char **h_addr_list = h->h_addr_list;
+#else
+    char sport[10];
+    snprintf (sport, 10, "%d", port);
+    struct addrinfo *res;
+    for (;;) {
+        int err = getaddrinfo (host, sport, NULL, &res);
+        if (need_abort && *need_abort) {
+            if (res) {
+                freeaddrinfo(res);
+            }
+            return -1;
+        }
 
+        if (err == EAI_AGAIN) {
+            lprintf ("getaddrinfo again\n");
+            continue;
+        }
+        else if (err == 0) {
+            lprintf ("getaddrinfo success\n");
+            break;
+        }
+        lprintf ("getaddrinfo err: %d\n", err);
+        return -1;
+    }
+#endif
+
+    s = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
+    if (s == -1) {
+        lprintf("mms: failed to create socket: %s\n", strerror(errno));
+        return -1;
+    }
+
+    if (fcntl (s, F_SETFL, fcntl (s, F_GETFL) | O_NONBLOCK) == -1) {
+        lprintf("mms: failed to set socket flags: %s\n", strerror(errno));
+        return -1;
+    }
+
+#ifdef USE_GETHOSTBYNAME
+    for (i = 0; h_addr_list[i]; i++) {
+        struct in_addr ia;
+        struct sockaddr_in sin;
+
+        memcpy (&ia, h_addr_list[i], 4);
+        sin.sin_family = AF_INET;
+        sin.sin_addr   = ia;
+        sin.sin_port   = htons(port);
+#else
+        struct addrinfo *rp;
+        for (rp = res; rp != NULL; rp = rp->ai_next) {
+            struct sockaddr_in sin;
+            memset (&sin, 0, sizeof (sin));
+            int l = rp->ai_addrlen;
+            if (l > sizeof (sin)) {
+                l = sizeof (sin);
+            }
+            memcpy (&sin, rp->ai_addr, l);
+#endif
+
+            time_t t = time (NULL);
+            int error = 0;
+            while (!need_abort || !(*need_abort)) {
+                int res = connect(s, (struct sockaddr *)&sin, sizeof(sin));
+                if (res == -1 && (errno == EINPROGRESS || errno == EALREADY)) {
+                    if (time (NULL) - t > 3) {
+                        error = -1;
+                        break;
+                    }
+                    usleep(100000);
+                    continue;
+                }
+                else if (res == -1 && errno == EISCONN) {
+                    break;
+                }
+                else if (res == -1) {
+                    error = -1;
+                    break;
+                }
+            }
+            if (need_abort && *need_abort) {
+                lprintf ("fallback_io_tcp_connect: aborted\n");
+                s = -1;
+                break;
+            }
+            //        if (connect(s, (struct sockaddr *)&sin, sizeof(sin)) ==-1 && errno != EINPROGRESS) {
+            //            continue;
+            //        }
+            if (error) {
+                continue;
+            }
+
+#ifndef USE_GETHOSTBYNAME
+            if (res) {
+                freeaddrinfo(res);
+            }
+#endif
+            return s;
+        }
+#ifndef USE_GETHOSTBYNAME
+        if (res) {
+            freeaddrinfo(res);
+        }
+#endif
+        close(s);
+        return -1;
+    }
 
 static mms_io_t fallback_io =
   {
@@ -438,7 +517,10 @@ static int get_answer (mms_io_t *io, mmsh_t *this) {
         len = 0;
       }
     } else {
-      len ++;
+      if (++len >= sizeof(this->buf)) {
+        lprintf("answer too large\n");
+        return 0;
+      }
     }
   }
   if (this->stream_type == MMSH_UNKNOWN) {
@@ -1160,7 +1242,7 @@ fail:
 }
 
 static int get_media_packet (mms_io_t *io, mmsh_t *this) {
-  int ret, len = 0;
+  int ret = ERROR, len = 0;
 
   if (get_chunk_header(io, this) == SUCCESS) {
     switch (this->chunk_type) {

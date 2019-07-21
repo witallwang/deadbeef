@@ -52,8 +52,6 @@
 #define CVORBIS_ENDIANNESS 0
 #endif
 
-#define DELIMITER "\n - \n"
-
 static const char *tag_rg_names[] = {
     "REPLAYGAIN_ALBUM_GAIN",
     "REPLAYGAIN_ALBUM_PEAK",
@@ -110,26 +108,6 @@ cvorbis_ftell (void *datasource) {
 }
 
 static bool
-add_meta(DB_playItem_t *it, const char *key, const char *value)
-{
-    const char *old_value = deadbeef->pl_find_meta(it, key);
-    if (old_value) {
-        char *new_value = malloc(strlen(old_value) + strlen(DELIMITER) + strlen(value) + 1);
-        if (new_value) {
-            sprintf(new_value, "%s"DELIMITER"%s", old_value, value);
-            deadbeef->pl_replace_meta(it, key, new_value);
-            free(new_value);
-            return true;
-        }
-    }
-    else {
-        deadbeef->pl_add_meta(it, key, value);
-        return true;
-    }
-    return false;
-}
-
-static bool
 replaygain_tag(DB_playItem_t *it, const int tag_enum, const char *tag, const char *value)
 {
     if (strcasecmp(tag_rg_names[tag_enum], tag))
@@ -151,13 +129,19 @@ update_vorbis_comments (DB_playItem_t *it, OggVorbis_File *vorbis_file, const in
     for (int i = 0; i < vc->comments; i++) {
         char *tag = strdup(vc->user_comments[i]);
         char *value;
-        if (tag && (value = strchr(tag, '='))) {
+        if (tag && (value = strchr(tag, '='))
+#ifdef ANDROID
+            && strlen (value) < 4000
+#endif
+            ) {
             *value++ = '\0';
             if (!replaygain_tag(it, DDB_REPLAYGAIN_ALBUMGAIN, tag, value) &&
                 !replaygain_tag(it, DDB_REPLAYGAIN_ALBUMPEAK, tag, value) &&
                 !replaygain_tag(it, DDB_REPLAYGAIN_TRACKGAIN, tag, value) &&
-                !replaygain_tag(it, DDB_REPLAYGAIN_TRACKPEAK, tag, value)) {
-                    add_meta(it, oggedit_map_tag(tag, "tag2meta"), value);
+                !replaygain_tag(it, DDB_REPLAYGAIN_TRACKPEAK, tag, value)
+                && strcasecmp (tag, "METADATA_BLOCK_PICTURE")
+                && *value) {
+                    deadbeef->pl_append_meta(it, oggedit_map_tag(tag, "tag2meta"), value);
             }
         }
         if (tag) {
@@ -207,19 +191,20 @@ cvorbis_seek_sample (DB_fileinfo_t *_info, int sample) {
         }
         deadbeef->pl_unlock ();
     }
-    sample += info->it->startsample;
+    int64_t startsample = deadbeef->pl_item_get_startsample (info->it);
+    sample += startsample;
     trace ("vorbis: seek to sample %d\n", sample);
     int res = ov_pcm_seek (&info->vorbis_file, sample);
     if (res != 0 && res != OV_ENOSEEK) {
         trace ("vorbis: error %x seeking to sample %d\n", res, sample);
         return -1;
     }
-    int tell = ov_pcm_tell (&info->vorbis_file);
+    int64_t tell = ov_pcm_tell (&info->vorbis_file);
     if (tell != sample) {
         trace ("vorbis: failed to do sample-accurate seek (%d->%d)\n", sample, tell);
     }
     trace ("vorbis: seek successful\n")
-    _info->readpos = (float)(sample - info->it->startsample)/_info->fmt.samplerate;
+    _info->readpos = (float)(sample - startsample)/_info->fmt.samplerate;
     info->next_update = -2;
     return 0;
 }
@@ -253,11 +238,12 @@ cvorbis_open2 (uint32_t hints, DB_playItem_t *it) {
     }
 
     deadbeef->pl_lock();
-    info->info.file = deadbeef->fopen(deadbeef->pl_find_meta (it, ":URI"));
-    if (!info->info.file) {
-        trace("cvorbis_open2 failed to open file %s\n", deadbeef->pl_find_meta(it, ":URI"));
-    }
+    const char *uri = strdupa (deadbeef->pl_find_meta (it, ":URI"));
     deadbeef->pl_unlock();
+    info->info.file = deadbeef->fopen(uri);
+    if (!info->info.file) {
+        trace("cvorbis_open2 failed to open file %s\n", uri);
+    }
 
     return &info->info;
 }
@@ -268,14 +254,14 @@ cvorbis_init (DB_fileinfo_t *_info, DB_playItem_t *it) {
     ogg_info_t *info = (ogg_info_t *)_info;
     info->new_track = info->it = it;
     deadbeef->pl_item_ref (it);
-    deadbeef->pl_replace_meta (it, "!FILETYPE", "OggVorbis");
 
     if (!info->info.file) {
         deadbeef->pl_lock ();
-        info->info.file = deadbeef->fopen (deadbeef->pl_find_meta (it, ":URI"));
+	const char *uri = strdupa (deadbeef->pl_find_meta (it, ":URI"));
         deadbeef->pl_unlock ();
+        info->info.file = deadbeef->fopen (uri);
         if (!info->info.file) {
-            trace ("cvorbis_init failed to open file %s\n", deadbeef->pl_find_meta (it, ":URI"));
+            trace ("cvorbis_init failed to open file %s\n", uri);
             return -1;
         }
     }
@@ -299,7 +285,6 @@ cvorbis_init (DB_fileinfo_t *_info, DB_playItem_t *it) {
         if (plt) {
             deadbeef->plt_unref (plt);
         }
-        deadbeef->pl_replace_meta (it, "!FILETYPE", "OggVorbis");
     }
     else
     {
@@ -319,12 +304,12 @@ cvorbis_init (DB_fileinfo_t *_info, DB_playItem_t *it) {
     }
 //    _info->readpos = 0;
     if (info->info.file->vfs->is_streaming ()) {
-        info->it->startsample = 0;
+        deadbeef->pl_item_set_startsample (info->it, 0);
         if (deadbeef->pl_get_item_duration (it) < 0) {
-            it->endsample = -1;
+            deadbeef->pl_item_set_endsample (info->it, -1);
         }
         else {
-            it->endsample = ov_pcm_total (&info->vorbis_file, -1)-1;
+            deadbeef->pl_item_set_endsample (it, ov_pcm_total (&info->vorbis_file, -1)-1);
         }
         if (update_vorbis_comments (it, &info->vorbis_file, -1))
             return -1;
@@ -343,12 +328,18 @@ cvorbis_init (DB_fileinfo_t *_info, DB_playItem_t *it) {
         trace ("vorbis: bad samplerate\n");
         return -1;
     }
-    _info->fmt.samplerate = vi->rate;
+    _info->fmt.samplerate = (int)vi->rate;
     _info->fmt.channels = vi->channels;
     info->channel_map = oggedit_vorbis_channel_map(vi->channels);
     for (int i = 0; i < _info->fmt.channels; i++) {
         _info->fmt.channelmask |= 1 << i;
     }
+
+    deadbeef->pl_set_meta_int (it, ":TRACKNUM", 0);
+    deadbeef->pl_set_meta_int (it, ":CHANNELS", vi->channels);
+    deadbeef->pl_set_meta_int (it, ":SAMPLERATE", (int)vi->rate);
+    deadbeef->pl_replace_meta (it, "!FILETYPE", "Ogg Vorbis");
+    info->cur_bit_stream = -1;
 
     return 0;
 }
@@ -378,7 +369,7 @@ cvorbis_free (DB_fileinfo_t *_info) {
 static void send_event(DB_playItem_t *it, const int event_enum)
 {
     ddb_event_track_t *event = (ddb_event_track_t *)deadbeef->event_alloc(event_enum);
-    if (event->track = it)
+    if ((event->track = it))
         deadbeef->pl_item_ref(event->track);
     deadbeef->event_send((ddb_event_t *)event, 0, 0);
 }
@@ -386,30 +377,33 @@ static void send_event(DB_playItem_t *it, const int event_enum)
 static bool
 new_streaming_link(ogg_info_t *info, const int new_link)
 {
-    if (info->cur_bit_stream == 0 && new_link != 1)
+    // Typically the files with multiple links are split into multiple tracks,
+    // and we don't want the file's properties to change while it's playing.
+    // However, we want this for network streams.
+    if (!info->info.file->vfs->is_streaming () || new_link < 0) {
         return false;
+    }
 
-    trace("Streaming link changed from %d to %d\n", info->cur_bit_stream, new_link);
-    deadbeef->pl_set_meta_int(info->it, ":TRACKNUM", new_link);
-    update_vorbis_comments(info->it, &info->vorbis_file, new_link);
-    send_event(info->it, DB_EV_SONGSTARTED);
-    send_event(info->it, DB_EV_TRACKINFOCHANGED);
-    deadbeef->sendmessage(DB_EV_PLAYLISTCHANGED, 0, DDB_PLAYLIST_CHANGE_CONTENT, 0);
+    trace ("Streaming link changed from %d to %d\n", info->cur_bit_stream, new_link);
+    update_vorbis_comments (info->it, &info->vorbis_file, new_link);
+    send_event (info->it, DB_EV_SONGSTARTED);
+    send_event (info->it, DB_EV_TRACKINFOCHANGED);
+    deadbeef->sendmessage (DB_EV_PLAYLISTCHANGED, 0, DDB_PLAYLIST_CHANGE_CONTENT, 0);
     info->cur_bit_stream = new_link;
 
     vorbis_info *vi = ov_info (&info->vorbis_file, new_link);
-    if (vi && info->info.fmt.channels != vi->channels || info->info.fmt.samplerate != vi->rate) {
-        // Streamer can't do this, so re-init the stream
-        trace("Stream channel count changed from %d to %d\n", info->info.fmt.channels, vi->channels);
-        trace("Stream channel count changed from %d to %d\n", info->info.fmt.samplerate, vi->rate);
-        deadbeef->sendmessage(DB_EV_PAUSE, 0, 0, 0);
-        deadbeef->sendmessage(DB_EV_TOGGLE_PAUSE, 0, 0, 0);
+    if (vi && (info->info.fmt.channels != vi->channels || info->info.fmt.samplerate != vi->rate)) {
+        info->info.fmt.samplerate = (int)vi->rate;
+        info->info.fmt.channels = vi->channels;
+        deadbeef->pl_set_meta_int (info->it, ":CHANNELS", vi->channels);
+        deadbeef->pl_set_meta_int (info->it, ":SAMPLERATE", (int)vi->rate);
         return true;
     }
 
     return false;
 }
 
+#if FIXED_POINT
 static void
 map_channels(int16_t *dest, const int16_t *src, const int16_t *src_end, const uint8_t *map, const int channel_count)
 {
@@ -419,6 +413,7 @@ map_channels(int16_t *dest, const int16_t *src, const int16_t *src_end, const ui
         dest += channel_count;
     }
 }
+#endif
 
 static bool
 is_playing_track(const DB_playItem_t *it)
@@ -442,10 +437,11 @@ cvorbis_read (DB_fileinfo_t *_info, char *buffer, int bytes_to_read) {
 
     /* Don't read past the end of a sub-track */
     int samples_to_read = bytes_to_read / sizeof(float) / _info->fmt.channels;
-    if (deadbeef->pl_get_item_flags(info->it) & DDB_IS_SUBTRACK) {
-        const ogg_int64_t samples_left = info->it->endsample - ov_pcm_tell(&info->vorbis_file);
+    int64_t endsample = deadbeef->pl_item_get_endsample (info->it);
+    if (endsample > 0) {
+        const ogg_int64_t samples_left = endsample - ov_pcm_tell(&info->vorbis_file);
         if (samples_left < samples_to_read) {
-            samples_to_read = samples_left;
+            samples_to_read = (int)samples_left;
             bytes_to_read = samples_to_read * sizeof(float) * _info->fmt.channels;
         }
     }
@@ -468,8 +464,9 @@ cvorbis_read (DB_fileinfo_t *_info, char *buffer, int bytes_to_read) {
         if (ret < 0) {
             trace("cvorbis_read: ov_read returned %d\n", ret);
         }
-        else if (new_link != info->cur_bit_stream && !ov_seekable(&info->vorbis_file) && new_streaming_link(info, new_link)) {
+        else if (new_link != info->cur_bit_stream && new_streaming_link(info, new_link)) {
             bytes_read = bytes_to_read;
+            break;
         }
         else {
             bytes_read += ret;
@@ -486,13 +483,14 @@ cvorbis_read (DB_fileinfo_t *_info, char *buffer, int bytes_to_read) {
     {
         float **pcm = NULL;
         int new_link = -1;
-        ret=ov_read_float(&info->vorbis_file, &pcm, samples_to_read-samples_read, &new_link);
+        ret = (int)ov_read_float(&info->vorbis_file, &pcm, samples_to_read-samples_read, &new_link);
 
         if (ret < 0) {
             trace("cvorbis_read: ov_read returned %d\n", ret);
         }
-        else if (new_link != info->cur_bit_stream && !ov_seekable(&info->vorbis_file) && new_streaming_link(info, new_link)) {
+        else if (new_link != info->cur_bit_stream && new_streaming_link(info, new_link)) {
             samples_read = samples_to_read;
+            break;
         }
         else if (ret > 0) {
             float *ptr = (float *)buffer + samples_read*_info->fmt.channels;
@@ -510,9 +508,10 @@ cvorbis_read (DB_fileinfo_t *_info, char *buffer, int bytes_to_read) {
     bytes_read = samples_read * sizeof(float) * _info->fmt.channels;
 #endif
 
-    _info->readpos = (float)(ov_pcm_tell(&info->vorbis_file) - info->it->startsample) / _info->fmt.samplerate;
+    int64_t startsample = deadbeef->pl_item_get_startsample (info->it);
+    _info->readpos = (float)(ov_pcm_tell(&info->vorbis_file) - startsample) / _info->fmt.samplerate;
     if (info->set_bitrate && _info->readpos > info->next_update) {
-        const int rate = ov_bitrate_instant(&info->vorbis_file) / 1000;
+        const int rate = (int)ov_bitrate_instant(&info->vorbis_file) / 1000;
         if (rate > 0) {
             deadbeef->streamer_set_bitrate(rate);
             info->next_update = info->next_update <= 0 ? info->next_update + 1 : _info->readpos + 5;
@@ -575,7 +574,7 @@ cvorbis_insert (ddb_playlist_t *plt, DB_playItem_t *after, const char *fname) {
     }
 
     long nstreams = ov_streams (&vorbis_file);
-    int currentsample = 0;
+    int64_t currentsample = 0;
     for (int stream = 0; stream < nstreams; stream++) {
         const vorbis_info *vi = ov_info (&vorbis_file, stream);
         if (!vi) {
@@ -587,23 +586,26 @@ cvorbis_insert (ddb_playlist_t *plt, DB_playItem_t *after, const char *fname) {
 #else
         const float duration = ov_time_total(&vorbis_file, stream);
 #endif
-        int totalsamples = ov_pcm_total (&vorbis_file, stream);
+        int64_t totalsamples = ov_pcm_total (&vorbis_file, stream);
 
         DB_playItem_t *it = deadbeef->pl_item_alloc_init (fname, plugin.plugin.id);
         deadbeef->pl_set_meta_int (it, ":TRACKNUM", stream);
         deadbeef->plt_set_item_duration (plt, it, duration);
         if (nstreams > 1) {
-            it->startsample = currentsample;
-            it->endsample = currentsample + totalsamples - 1;
+            deadbeef->pl_item_set_startsample (it, currentsample);
+            deadbeef->pl_item_set_endsample (it, currentsample + totalsamples - 1);
             deadbeef->pl_set_item_flags (it, DDB_IS_SUBTRACK);
         }
 
         if (update_vorbis_comments (it, &vorbis_file, stream))
             continue;
-        int samplerate = vi->rate;
+        int samplerate = (int)vi->rate;
 
-        const off_t start_offset = sample_offset(&vorbis_file, it->startsample-1);
-        const off_t end_offset = sample_offset(&vorbis_file, it->endsample);
+        int64_t startsample = deadbeef->pl_item_get_startsample (it);
+        int64_t endsample = deadbeef->pl_item_get_endsample (it);
+
+        const off_t start_offset = sample_offset(&vorbis_file, startsample-1);
+        const off_t end_offset = sample_offset(&vorbis_file, endsample);
         char *filetype = NULL;
         const off_t stream_size = oggedit_vorbis_stream_info(deadbeef->fopen(fname), start_offset, end_offset, &filetype);
         if (filetype) {
@@ -621,30 +623,12 @@ cvorbis_insert (ddb_playlist_t *plt, DB_playItem_t *after, const char *fname) {
 //        deadbeef->pl_set_meta_int (it, ":BITRATE", ov_bitrate (&vorbis_file, stream)/1000);
 
         if (nstreams == 1) {
-            DB_playItem_t *cue = deadbeef->plt_insert_cue (plt, after, it, totalsamples, samplerate);
+            DB_playItem_t *cue = deadbeef->plt_process_cue (plt, after, it,  totalsamples, samplerate);
             if (cue) {
                 deadbeef->pl_item_unref (it);
-                deadbeef->pl_item_unref (cue);
                 ov_clear (&vorbis_file);
                 return cue;
             }
-
-            deadbeef->pl_lock ();
-            const char *cuesheet_meta = deadbeef->pl_find_meta (it, "cuesheet");
-            if (cuesheet_meta) {
-                trace("Embedded cuesheet found for %s\n", fname);
-                const char *last_sheet = strstr(cuesheet_meta, DELIMITER);
-                const char *cuesheet = last_sheet ? last_sheet + strlen(DELIMITER) : cuesheet_meta;
-                cue = deadbeef->plt_insert_cue_from_buffer (plt, after, it, cuesheet, strlen (cuesheet), totalsamples, samplerate);
-                if (cue) {
-                    deadbeef->pl_unlock ();
-                    deadbeef->pl_item_unref (it);
-                    deadbeef->pl_item_unref (cue);
-                    ov_clear (&vorbis_file);
-                    return cue;
-                }
-            }
-            deadbeef->pl_unlock ();
         }
         else {
             currentsample += totalsamples;
@@ -673,14 +657,15 @@ cvorbis_read_metadata (DB_playItem_t *it) {
     vorbis_info *vi = NULL;
 
     deadbeef->pl_lock ();
-    fp = deadbeef->fopen (deadbeef->pl_find_meta (it, ":URI"));
+    const char *uri = strdupa (deadbeef->pl_find_meta (it, ":URI"));
     deadbeef->pl_unlock ();
+    fp = deadbeef->fopen (uri);
     if (!fp) {
-        trace ("cvorbis_read_metadata: failed to fopen %s\n", deadbeef->pl_find_meta (it, ":URI"));
+        trace ("cvorbis_read_metadata: failed to fopen %s\n", uri);
         return -1;
     }
     if (fp->vfs->is_streaming ()) {
-        trace ("cvorbis_read_metadata: failed to fopen %s\n", deadbeef->pl_find_meta (it, ":URI"));
+        trace ("cvorbis_read_metadata: failed to fopen %s\n", uri);
         return -1;
     }
     ov_callbacks ovcb = {
@@ -697,7 +682,7 @@ cvorbis_read_metadata (DB_playItem_t *it) {
     int tracknum = deadbeef->pl_find_meta_int (it, ":TRACKNUM", -1);
     vi = ov_info (&vorbis_file, tracknum);
     if (!vi) {
-        trace ("cvorbis_read_metadata: failed to ov_open %s\n", deadbeef->pl_find_meta (it, ":URI"));
+        trace ("cvorbis_read_metadata: failed to ov_open %s\n", uri);
         ov_clear (&vorbis_file);
         return -1;
     }
@@ -712,19 +697,13 @@ cvorbis_read_metadata (DB_playItem_t *it) {
 }
 
 static void
-split_tag(vorbis_comment *tags, const char *key, const char *value)
+split_tag(vorbis_comment *tags, const char *key, const char *value, int valuesize)
 {
-    if (key && value) {
-        const char *p;
-        while ((p = strstr(value, DELIMITER))) {
-            char v[p - value + 1];
-            strncpy(v, value, p-value);
-            v[p-value] = 0;
-            vorbis_comment_add_tag(tags, key, v);
-            value = p + strlen(DELIMITER);
-        }
-
+    while (valuesize > 0) {
         vorbis_comment_add_tag(tags, key, value);
+        size_t l = strlen (value) + 1;
+        value += l;
+        valuesize -= l;
     }
 }
 
@@ -737,10 +716,11 @@ tags_list(DB_playItem_t *it, OggVorbis_File *vorbis_file)
 
     deadbeef->pl_lock ();
     for (DB_metaInfo_t *m = deadbeef->pl_get_metadata_head (it); m; m = m->next) {
-        char *key = strdupa (m->key);
-        if (key && key[0] != ':' && key[0] != '!') {
-            split_tag (tags, oggedit_map_tag (key, "meta2tag"), m->value);
+        if (strchr (":!_", m->key[0])) {
+            break;
         }
+        char *key = strdupa (m->key);
+        split_tag (tags, oggedit_map_tag (key, "meta2tag"), m->value, m->valuesize);
     }
     deadbeef->pl_unlock ();
 
@@ -749,8 +729,18 @@ tags_list(DB_playItem_t *it, OggVorbis_File *vorbis_file)
         if (deadbeef->pl_find_meta (it, ddb_internal_rg_keys[n])) {
             float value = deadbeef->pl_get_item_replaygain (it, n);
             char s[100];
-            snprintf (s, sizeof (s), "%f", value);
-            split_tag (tags, tag_rg_names[n], s);
+            // https://wiki.hydrogenaud.io/index.php?title=ReplayGain_2.0_specification#Metadata_format
+            switch (n) {
+            case DDB_REPLAYGAIN_ALBUMGAIN:
+            case DDB_REPLAYGAIN_TRACKGAIN:
+                snprintf (s, sizeof (s), "%.2f dB", value);
+                break;
+            case DDB_REPLAYGAIN_ALBUMPEAK:
+            case DDB_REPLAYGAIN_TRACKPEAK:
+                snprintf (s, sizeof (s), "%.6f", value);
+                break;
+            }
+            split_tag (tags, tag_rg_names[n], s, (int)strlen (s)+1);
         }
     }
 
@@ -795,13 +785,22 @@ cvorbis_write_metadata (DB_playItem_t *it) {
     const off_t file_size = oggedit_write_vorbis_metadata (deadbeef->fopen(fname), fname, 0, stream_size, tags->comments, tags->user_comments);
     vorbis_comment_clear(tags);
     free(tags);
+
+    int res = 0;
+
     if (file_size <= 0) {
         trace ("cvorbis_write_metadata: failed to write tags to %s, code %d\n", fname, file_size);
-        return -1;
+        res = -1;
     }
 
-    set_meta_ll(it, ":FILE_SIZE", (int64_t)file_size);
-    return cvorbis_read_metadata(it);
+    ov_clear (&vorbis_file);
+
+    if (!res) {
+        set_meta_ll(it, ":FILE_SIZE", (int64_t)file_size);
+        res = cvorbis_read_metadata(it);
+    }
+
+    return res;
 }
 
 
@@ -809,16 +808,15 @@ static const char * exts[] = { "ogg", "ogx", "oga", NULL };
 
 // define plugin interface
 static DB_decoder_t plugin = {
-    .plugin.api_vmajor = 1,
-    .plugin.api_vminor = 7,
+    DB_PLUGIN_SET_API_VERSION
     .plugin.version_major = 1,
     .plugin.version_minor = 0,
     .plugin.type = DB_PLUGIN_DECODER,
     .plugin.id = "stdogg",
-    .plugin.name = "OggVorbis decoder",
-    .plugin.descr = "OggVorbis decoder using standard xiph.org libraries",
+    .plugin.name = "Ogg Vorbis decoder",
+    .plugin.descr = "Ogg Vorbis decoder using standard xiph.org libraries",
     .plugin.copyright =
-    "OggVorbis plugin for DeaDBeeF\n"
+    "Ogg Vorbis plugin for DeaDBeeF\n"
     "Copyright (C) 2009-2014 Alexey Yakovenko et al.\n"
     "\n"
     "vcedit.c\n"

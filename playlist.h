@@ -41,9 +41,12 @@
 // :DURATION - length in seconds
 
 typedef struct playItem_s {
-    int startsample;
-    int endsample;
-    int shufflerating; // sort order for shuffle mode
+    int32_t startsample;
+    int32_t endsample;
+    int32_t shufflerating; // sort order for shuffle mode
+
+    int64_t startsample64;
+    int64_t endsample64;
     // private area, must not be visible to plugins
     float _duration;
     uint32_t _flags;
@@ -54,6 +57,8 @@ typedef struct playItem_s {
     unsigned selected : 1;
     unsigned played : 1; // mark as played in shuffle mode
     unsigned in_playlist : 1; // 1 if item is in playlist
+    unsigned has_startsample64 : 1;
+    unsigned has_endsample64 : 1;
 } playItem_t;
 
 typedef struct playlist_s {
@@ -61,6 +66,7 @@ typedef struct playlist_s {
     struct playlist_s *next;
     int count[2];
     float totaltime;
+    float seltime;
     int modification_idx;
     int last_save_modification_idx;
     playItem_t *head[PL_MAX_ITERATORS]; // head of linked list
@@ -70,8 +76,18 @@ typedef struct playlist_s {
     struct DB_metaInfo_s *meta; // linked list storing metainfo
     int refc;
     int files_add_visibility;
+
+    int64_t cue_numsamples;
+    int cue_samplerate;
+
+    int search_cmpidx;
+    
     unsigned fast_mode : 1;
     unsigned files_adding : 1;
+    unsigned recalc_seltime : 1;
+    unsigned loading_cue : 1;
+    unsigned ignore_archives : 1;
+    unsigned follow_symlinks : 1;
 } playlist_t;
 
 // global playlist control functions
@@ -251,11 +267,22 @@ plt_insert_cue_from_buffer (playlist_t *plt, playItem_t *after, playItem_t *orig
 playItem_t *
 plt_insert_cue (playlist_t *plt, playItem_t *after, playItem_t *origin, int numsamples, int samplerate);
 
+// if value is NULL or empty - do nothing
+// if key already exists - do nothing
+// otherwise, add new meta field
 void
 pl_add_meta (playItem_t *it, const char *key, const char *value);
 
 void
+pl_add_meta_full (playItem_t *it, const char *key, const char *value, int valuesize);
+
+// if it already exists, append new value(s)
+// otherwise, call pl_add_meta
+void
 pl_append_meta (playItem_t *it, const char *key, const char *value);
+
+void
+pl_append_meta_full (playItem_t *it, const char *key, const char *value, int valuesize);
 
 // must be used in explicit pl_lock/unlock block
 // that makes it possible to avoid copying metadata on every access
@@ -269,6 +296,9 @@ pl_find_meta_raw (playItem_t *it, const char *key);
 int
 pl_find_meta_int (playItem_t *it, const char *key, int def);
 
+int64_t
+pl_find_meta_int64 (playItem_t *it, const char *key, int64_t def);
+
 float
 pl_find_meta_float (playItem_t *it, const char *key, float def);
 
@@ -277,6 +307,9 @@ pl_replace_meta (playItem_t *it, const char *key, const char *value);
 
 void
 pl_set_meta_int (playItem_t *it, const char *key, int value);
+
+void
+pl_set_meta_int64 (playItem_t *it, const char *key, int64_t value);
 
 void
 pl_set_meta_float (playItem_t *it, const char *key, float value);
@@ -366,6 +399,9 @@ plt_get_totaltime (playlist_t *plt);
 float
 pl_get_totaltime (void);
 
+float
+plt_get_selection_playback_time (playlist_t *plt);
+
 void
 pl_set_selected (playItem_t *it, int sel);
 
@@ -413,6 +449,9 @@ plt_search_reset (playlist_t *plt);
 
 void
 plt_search_process (playlist_t *plt, const char *text);
+
+void
+plt_search_process2 (playlist_t *plt, const char *text, int select_results);
 
 void
 plt_sort (playlist_t *plt, int iter, int id, const char *format, int order);
@@ -518,5 +557,44 @@ pl_format_item_queue (playItem_t *it, char *s, int size);
 
 void
 send_trackinfochanged (playItem_t *track);
+
+playItem_t *
+plt_process_cue (playlist_t *plt, playItem_t *after, playItem_t *it, uint64_t totalsamples, int samplerate);
+
+void
+pl_configchanged (void);
+
+DB_metaInfo_t *
+pl_meta_for_key (playItem_t *it, const char *key);
+
+void
+pl_meta_free_values (DB_metaInfo_t *meta);
+
+void
+pl_add_meta_copy (playItem_t *it, DB_metaInfo_t *meta);
+
+int
+register_fileadd_filter (int (*callback)(ddb_file_found_data_t *data, void *user_data), void *user_data);
+
+void
+unregister_fileadd_filter (int id);
+
+playItem_t *
+pl_item_init (const char *fname);
+
+int64_t
+pl_item_get_startsample (playItem_t *it);
+
+int64_t
+pl_item_get_endsample (playItem_t *it);
+
+void
+pl_item_set_startsample (playItem_t *it, int64_t sample);
+
+void
+pl_item_set_endsample (playItem_t *it, int64_t sample);
+
+int
+plt_is_loading_cue (playlist_t *plt);
 
 #endif // __PLAYLIST_H

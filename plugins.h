@@ -109,11 +109,8 @@ plug_activate (DB_plugin_t *plug, int activate);
 DB_output_t *
 plug_get_output (void);
 
-void
-plug_reinit_sound (void);
-
 int
-plug_select_output (void);
+plug_reinit_sound (void);
 
 void
 plug_set_output (DB_output_t *out);
@@ -156,5 +153,17 @@ action_set_playlist (ddb_playlist_t *plt);
 
 ddb_playlist_t *
 action_get_playlist (void);
+
+void
+plug_register_in (DB_plugin_t *inplug);
+
+void
+plug_register_out (DB_plugin_t *outplug);
+
+DB_functions_t *
+plug_get_api (void);
+
+int
+plug_init_plugin (DB_plugin_t* (*loadfunc)(DB_functions_t *), void *handle);
 
 #endif // __PLUGINS_H

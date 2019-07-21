@@ -217,13 +217,14 @@ int u8_strlen(char *s)
     int32_t count = 0;
     int32_t i = 0;
 
-    while (u8_nextchar(s, &i) != 0)
+    while (s[i] && u8_nextchar(s, &i) != 0)
         count++;
 
     return count;
 }
 
 /* reads the next utf-8 sequence out of a string, updating an index */
+// NOTE: a valid UTF8 sequence is expected, no validity or 0 checks are performed.
 uint32_t u8_nextchar(const char *s, int32_t *i)
 {
     uint32_t ch = 0;
@@ -763,18 +764,15 @@ utfcasestr (const char *s1, const char *s2) {
             const char *next;
             u8_nextchar (p1, &i1);
             u8_nextchar (p2, &i2);
-            int l1 = u8_tolower (p1, i1, lw1);
-            int l2 = u8_tolower (p2, i2, lw2);
-            //fprintf (stderr, "comparing %s to %s\n", lw1, lw2);
+            u8_tolower (p1, i1, lw1);
+            u8_tolower (p2, i2, lw2);
             if (strcmp (lw1, lw2)) {
-                //fprintf (stderr, "fail\n");
                 break;
             }
             p1 += i1;
             p2 += i2;
         }
         if (*p2 == 0) {
-            //fprintf (stderr, "%s found in %s\n", s2, s1);
             return p1;
         }
         int32_t i = 0;

@@ -35,6 +35,7 @@
 #  include <config.h>
 #endif
 #include "../../deadbeef.h"
+#include "../../strdupa.h"
 
 #define min(x,y) ((x)<(y)?(x):(y))
 #define max(x,y) ((x)>(y)?(x):(y))
@@ -50,9 +51,9 @@ DB_functions_t *deadbeef;
 typedef struct {
     DB_fileinfo_t info;
     tta_info tta;
-    int currentsample;
-    int startsample;
-    int endsample;
+    int64_t currentsample;
+    int64_t startsample;
+    int64_t endsample;
     char buffer[PCM_BUFFER_LENGTH * MAX_BSIZE * MAX_NCH];
     int remaining;
     int samples_to_skip;
@@ -71,20 +72,18 @@ tta_init (DB_fileinfo_t *_info, DB_playItem_t *it) {
     tta_info_t *info = (tta_info_t *)_info;
 
     deadbeef->pl_lock ();
-    const char *fname = deadbeef->pl_find_meta (it, ":URI")
+    const char *fname = strdupa (deadbeef->pl_find_meta (it, ":URI"));
+    deadbeef->pl_unlock ();
     trace ("open_tta_file %s\n", fname);
     if (open_tta_file (fname, &info->tta, 0) != 0) {
-        deadbeef->pl_unlock ();
         fprintf (stderr, "tta: failed to open %s\n", fname);
         return -1;
     }
 
     if (player_init (&info->tta) != 0) {
-        deadbeef->pl_unlock ();
         fprintf (stderr, "tta: failed to init player for %s\n", fname);
         return -1;
     }
-    deadbeef->pl_unlock ();
 
     _info->fmt.bps = info->tta.BPS;
     _info->fmt.channels = info->tta.NCH;
@@ -95,9 +94,10 @@ tta_init (DB_fileinfo_t *_info, DB_playItem_t *it) {
     _info->readpos = 0;
     _info->plugin = &plugin;
 
-    if (it->endsample > 0) {
-        info->startsample = it->startsample;
-        info->endsample = it->endsample;
+    int64_t endsample = deadbeef->pl_item_get_endsample (it);
+    if (endsample > 0) {
+        info->startsample = deadbeef->pl_item_get_startsample (it);
+        info->endsample = endsample;
         plugin.seek_sample (_info, 0);
     }
     else {
@@ -223,21 +223,6 @@ tta_insert (ddb_playlist_t *plt, DB_playItem_t *after, const char *fname) {
         deadbeef->fclose (fp);
     }
 
-    // embedded cue
-    deadbeef->pl_lock ();
-    const char *cuesheet = deadbeef->pl_find_meta (it, "cuesheet");
-    DB_playItem_t *cue = NULL;
-    if (cuesheet) {
-        cue = deadbeef->plt_insert_cue_from_buffer (plt, after, it, cuesheet, strlen (cuesheet), totalsamples, tta.SAMPLERATE);
-        if (cue) {
-            deadbeef->pl_item_unref (it);
-            deadbeef->pl_item_unref (cue);
-            deadbeef->pl_unlock ();
-            return cue;
-        }
-    }
-    deadbeef->pl_unlock ();
-
     char s[100];
     snprintf (s, sizeof (s), "%lld", fsize);
     deadbeef->pl_add_meta (it, ":FILE_SIZE", s);
@@ -250,10 +235,9 @@ tta_insert (ddb_playlist_t *plt, DB_playItem_t *after, const char *fname) {
     snprintf (s, sizeof (s), "%d", tta.BITRATE);
     deadbeef->pl_add_meta (it, ":BITRATE", s);
 
-    cue  = deadbeef->plt_insert_cue (plt, after, it, totalsamples, tta.SAMPLERATE);
+    DB_playItem_t *cue = deadbeef->plt_process_cue (plt, after, it,  totalsamples, tta.SAMPLERATE);
     if (cue) {
         deadbeef->pl_item_unref (it);
-        deadbeef->pl_item_unref (cue);
         return cue;
     }
 
@@ -266,8 +250,9 @@ tta_insert (ddb_playlist_t *plt, DB_playItem_t *after, const char *fname) {
 
 static int tta_read_metadata (DB_playItem_t *it) {
     deadbeef->pl_lock ();
-    DB_FILE *fp = deadbeef->fopen (deadbeef->pl_find_meta (it, ":URI"));
+    const char *uri = strdupa (deadbeef->pl_find_meta (it, ":URI"));
     deadbeef->pl_unlock ();
+    DB_FILE *fp = deadbeef->fopen (uri);
     if (!fp) {
         return -1;
     }
@@ -312,7 +297,7 @@ static int tta_write_metadata (DB_playItem_t *it) {
 
     int id3v2_version = 4;
     char id3v1_encoding[50];
-    deadbeef->conf_get_str ("mp3.id3v1_encoding", "iso8859-1", id3v1_encoding, sizeof (id3v1_encoding));
+    deadbeef->conf_get_str ("mp3.id3v1_encoding", "cp1252", id3v1_encoding, sizeof (id3v1_encoding));
     return deadbeef->junk_rewrite_tags (it, junk_flags, id3v2_version, id3v1_encoding);
 }
 
@@ -331,8 +316,7 @@ static const char * exts[] = { "tta", NULL };
 
 // define plugin interface
 static DB_decoder_t plugin = {
-    .plugin.api_vmajor = 1,
-    .plugin.api_vminor = 0,
+    DDB_PLUGIN_SET_API_VERSION
     .plugin.version_major = 1,
     .plugin.version_minor = 0,
     .plugin.type = DB_PLUGIN_DECODER,

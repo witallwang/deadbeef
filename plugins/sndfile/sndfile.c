@@ -27,6 +27,7 @@
 #include <math.h>
 #include <stdlib.h>
 #include "../../deadbeef.h"
+#include "../../strdupa.h"
 
 #define min(x,y) ((x)<(y)?(x):(y))
 #define max(x,y) ((x)>(y)?(x):(y))
@@ -41,9 +42,9 @@ typedef struct {
     DB_fileinfo_t info;
     SNDFILE *ctx;
     DB_FILE *file;
-    int startsample;
-    int endsample;
-    int currentsample;
+    int64_t startsample;
+    int64_t endsample;
+    int64_t currentsample;
     int bitrate;
     int sf_format;
     int read_as_short;
@@ -163,13 +164,14 @@ sndfile_init (DB_fileinfo_t *_info, DB_playItem_t *it) {
 
     SF_INFO inf;
     deadbeef->pl_lock ();
-    DB_FILE *fp = deadbeef->fopen (deadbeef->pl_find_meta (it, ":URI"));
+    const char *uri = strdupa (deadbeef->pl_find_meta (it, ":URI"));
     deadbeef->pl_unlock ();
+    DB_FILE *fp = deadbeef->fopen (uri);
     if (!fp) {
-        trace ("sndfile: failed to open %s\n", deadbeef->pl_find_meta (it, ":URI"));
+        trace ("sndfile: failed to open %s\n", uri);
         return -1;
     }
-    int fsize = deadbeef->fgetlength (fp);
+    int64_t fsize = deadbeef->fgetlength (fp);
 
     info->file = fp;
     info->ctx = sf_open_virtual (&vfs, SFM_READ, &inf, info);
@@ -225,9 +227,10 @@ sndfile_init (DB_fileinfo_t *_info, DB_playItem_t *it) {
     }
 
     _info->readpos = 0;
-    if (it->endsample > 0) {
-        info->startsample = it->startsample;
-        info->endsample = it->endsample;
+    int64_t endsample = deadbeef->pl_item_get_endsample (it);
+    if (endsample > 0) {
+        info->startsample = deadbeef->pl_item_get_startsample (it);
+        info->endsample = endsample;
         if (plugin.seek_sample (_info, 0) < 0) {
             return -1;
         }
@@ -238,7 +241,7 @@ sndfile_init (DB_fileinfo_t *_info, DB_playItem_t *it) {
     }
     // hack bitrate
 
-    int totalsamples = inf.frames;
+    int64_t totalsamples = inf.frames;
     float sec = (float)totalsamples / inf.samplerate;
     if (sec > 0) {
         info->bitrate = fsize / sec * 8 / 1000;
@@ -267,14 +270,14 @@ sndfile_read (DB_fileinfo_t *_info, char *bytes, int size) {
     sndfile_info_t *info = (sndfile_info_t*)_info;
     int samplesize = _info->fmt.channels * _info->fmt.bps / 8;
     if (size / samplesize + info->currentsample > info->endsample) {
-        size = (info->endsample - info->currentsample + 1) * samplesize;
+        size = (int)((info->endsample - info->currentsample + 1) * samplesize);
         trace ("sndfile: size truncated to %d bytes, cursample=%d, endsample=%d\n", size, info->currentsample, info->endsample);
         if (size <= 0) {
             return 0;
         }
     }
 
-    int n = 0;
+    int64_t n = 0;
     if (info->read_as_short) {
         n = sf_readf_short(info->ctx, (short *)bytes, size/samplesize);
     }
@@ -299,7 +302,7 @@ sndfile_read (DB_fileinfo_t *_info, char *bytes, int size) {
                 break;
             case 24:
                 {
-                    uint8_t *data = bytes;
+                    uint8_t *data = (uint8_t *)bytes;
                     for (int i = 0; i < n/3; i++, data += 3) {
                         uint8_t temp = data[0];
                         data[0] = data[2];
@@ -322,7 +325,7 @@ sndfile_read (DB_fileinfo_t *_info, char *bytes, int size) {
 
     info->currentsample += n;
 
-    size = n * samplesize;
+    size = (int)(n * samplesize);
     _info->readpos = (float)(info->currentsample-info->startsample)/_info->fmt.samplerate;
     if (info->bitrate > 0) {
         deadbeef->streamer_set_bitrate (info->bitrate);
@@ -333,7 +336,7 @@ sndfile_read (DB_fileinfo_t *_info, char *bytes, int size) {
 static int
 sndfile_seek_sample (DB_fileinfo_t *_info, int sample) {
     sndfile_info_t *info = (sndfile_info_t*)_info;
-    int ret = sf_seek (info->ctx, sample + info->startsample, SEEK_SET);
+    int64_t ret = sf_seek (info->ctx, sample + info->startsample, SEEK_SET);
     if (ret < 0) {
         return -1;
     }
@@ -363,12 +366,19 @@ sndfile_insert (ddb_playlist_t *plt, DB_playItem_t *after, const char *fname) {
     trace ("calling sf_open_virtual\n");
     info.ctx = sf_open_virtual (&vfs, SFM_READ, &inf, &info);
     if (!info.ctx) {
-        trace ("sndfile: sf_open failed\n");
+        trace ("sndfile: sf_open failed for %s\n", fname);
         deadbeef->fclose (info.file);
         return NULL;
     }
+
+    if (inf.samplerate == 0) {
+        trace ("sndfile: invalid samplerate 0 in file %s\n", fname);
+        deadbeef->fclose (info.file);
+        return NULL;
+    }
+
     trace ("calling sf_open_virtual ok\n");
-    int totalsamples = inf.frames;
+    int64_t totalsamples = inf.frames;
     int samplerate = inf.samplerate;
     sf_close (info.ctx);
     deadbeef->fclose (info.file);
@@ -419,9 +429,11 @@ sndfile_insert (ddb_playlist_t *plt, DB_playItem_t *after, const char *fname) {
     deadbeef->pl_add_meta (it, ":CHANNELS", s);
     snprintf (s, sizeof (s), "%d", samplerate);
     deadbeef->pl_add_meta (it, ":SAMPLERATE", s);
-    int br = (int)roundf(fsize / duration * 8 / 1000);
-    snprintf (s, sizeof (s), "%d", br);
-    deadbeef->pl_add_meta (it, ":BITRATE", s);
+    if (duration > 0) {
+        int br = (int)roundf(fsize / duration * 8 / 1000);
+        snprintf (s, sizeof (s), "%d", br);
+        deadbeef->pl_add_meta (it, ":BITRATE", s);
+    }
 
     // sndfile subformats
     const char *subformats[] = {
@@ -489,15 +501,14 @@ sndfile_insert (ddb_playlist_t *plt, DB_playItem_t *after, const char *fname) {
         "VORBIS",
     };
 
-    if (inf.format&SF_FORMAT_SUBMASK <= SF_FORMAT_VORBIS) {
+    if ((inf.format&SF_FORMAT_SUBMASK) <= SF_FORMAT_VORBIS) {
         deadbeef->pl_add_meta (it, ":SF_FORMAT", subformats[inf.format&SF_FORMAT_SUBMASK]);
     }
 
-    DB_playItem_t *cue_after = deadbeef->plt_insert_cue (plt, after, it, totalsamples, samplerate);
-    if (cue_after) {
+    DB_playItem_t *cue = deadbeef->plt_process_cue (plt, after, it, totalsamples, samplerate);
+    if (cue) {
         deadbeef->pl_item_unref (it);
-        deadbeef->pl_item_unref (cue_after);
-        return cue_after;
+        return cue;
     }
 
     deadbeef->pl_add_meta (it, "title", NULL);
@@ -579,8 +590,7 @@ static const char settings_dlg[] =
 
 // define plugin interface
 static DB_decoder_t plugin = {
-    .plugin.api_vmajor = 1,
-    .plugin.api_vminor = 0,
+    DDB_PLUGIN_SET_API_VERSION
     .plugin.version_major = 1,
     .plugin.version_minor = 0,
     .plugin.type = DB_PLUGIN_DECODER,

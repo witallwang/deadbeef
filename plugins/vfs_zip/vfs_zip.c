@@ -114,8 +114,6 @@ vfs_zip_open (const char *fname) {
         return NULL;
     }
 
-    fname = colon;
-
     struct zip_file *zf = zip_fopen_index (z, st.index, 0);
     if (!zf) {
         zip_close (z);
@@ -323,8 +321,7 @@ vfs_zip_get_scheme_for_name (const char *fname) {
 }
 
 static DB_vfs_t plugin = {
-    .plugin.api_vmajor = 1,
-    .plugin.api_vminor = 6,
+    DDB_PLUGIN_SET_API_VERSION
     .plugin.version_major = 1,
     .plugin.version_minor = 0,
     .plugin.type = DB_PLUGIN_VFS,

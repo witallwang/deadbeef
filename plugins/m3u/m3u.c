@@ -96,7 +96,6 @@ load_m3u (ddb_playlist_t *plt, DB_playItem_t *after, const char *fname, int *pab
             }
             else if (read_extm3u) {
                 if (end - p >= 8 && !strncmp (p, "#EXTINF:", 8)) {
-                    length = -1;
                     memset (title, 0, sizeof (title));
                     memset (artist, 0, sizeof (artist));
                     p += 8;
@@ -244,7 +243,10 @@ pls_insert_file (ddb_playlist_t *plt, DB_playItem_t *after, const char *fname, c
     DB_playItem_t *it = NULL;
     const char *slash = NULL;
 
-    if (strrchr (uri, '/')) {
+    // is it relative path?
+    int isrelative = uri[0] != '/' || strncmp (uri, "../", 2);
+
+    if (!isrelative && strrchr (uri, '/')) {
         trace ("pls: inserting from uri: %s\n", uri);
         it = deadbeef->plt_insert_file2 (0, plt, after, uri, pabort, cb, user_data);
     }
@@ -274,7 +276,6 @@ pls_insert_file (ddb_playlist_t *plt, DB_playItem_t *after, const char *fname, c
 static DB_playItem_t *
 load_pls (ddb_playlist_t *plt, DB_playItem_t *after, const char *fname, int *pabort, int (*cb)(DB_playItem_t *it, void *data), void *user_data) {
     trace ("load_pls %s\n", fname);
-    const char *slash = strrchr (fname, '/');
     DB_FILE *fp = deadbeef->fopen (fname);
     if (!fp) {
         trace ("failed to open file %s\n", fname);
@@ -357,7 +358,7 @@ load_pls (ddb_playlist_t *plt, DB_playItem_t *after, const char *fname, int *pab
             uri[n] = 0;
             trace ("uri: %s\n", uri);
             trace ("uri%d=%s\n", idx, uri);
-            p = ++e;
+            e++;
         }
         else if (!strncasecmp (p, "title", 5)) {
             int idx = atoi (p + 5);
@@ -396,7 +397,7 @@ load_pls (ddb_playlist_t *plt, DB_playItem_t *after, const char *fname, int *pab
             memcpy (title, p, n);
             title[n] = 0;
             trace ("title%d=%s\n", idx, title);
-            p = ++e;
+            e++;
         }
         else if (!strncasecmp (p, "length", 6)) {
             int idx = atoi (p + 6);
@@ -494,6 +495,10 @@ m3uplug_save_m3u (const char *fname, DB_playItem_t *first, DB_playItem_t *last) 
     if (!fp) {
         return -1;
     }
+
+    char *tf = deadbeef->tf_compile ("[%artist% - ]%title%");
+    char s[1000];
+
     DB_playItem_t *it = first;
     deadbeef->pl_item_ref (it);
     fprintf (fp, "#EXTM3U\n");
@@ -501,23 +506,21 @@ m3uplug_save_m3u (const char *fname, DB_playItem_t *first, DB_playItem_t *last) 
         // skip subtracks, pls and m3u formats don't support that
         uint32_t flags = deadbeef->pl_get_item_flags (it);
         if (flags & DDB_IS_SUBTRACK) {
-            DB_playItem_t *next = deadbeef->pl_get_next (it, PL_MAIN);
-            deadbeef->pl_item_unref (it);
-            it = next;
-            continue;
+            if (deadbeef->pl_find_meta_int (it, ":TRACKNUM", 0)) {
+                DB_playItem_t *next = deadbeef->pl_get_next (it, PL_MAIN);
+                deadbeef->pl_item_unref (it);
+                it = next;
+                continue;
+            }
         }
         int dur = (int)floor(deadbeef->pl_get_item_duration (it));
-        char s[1000];
-        int has_artist = deadbeef->pl_meta_exists (it, "artist");
-        int has_title = deadbeef->pl_meta_exists (it, "title");
-        if (has_artist && has_title) {
-            deadbeef->pl_format_title (it, -1, s, sizeof (s), -1, "%a - %t");
-            fprintf (fp, "#EXTINF:%d,%s\n", dur, s);
-        }
-        else if (has_title) {
-            deadbeef->pl_format_title (it, -1, s, sizeof (s), -1, "%t");
-            fprintf (fp, "#EXTINF:%d,%s\n", dur, s);
-        }
+        ddb_tf_context_t ctx = {
+            ._size = sizeof (ddb_tf_context_t),
+            .it = it,
+        };
+        deadbeef->tf_eval (&ctx, tf, s, sizeof (s));
+        fprintf (fp, "#EXTINF:%d,%s\n", dur, s);
+
         deadbeef->pl_lock ();
         {
             const char *fname = deadbeef->pl_find_meta (it, ":URI");
@@ -533,6 +536,8 @@ m3uplug_save_m3u (const char *fname, DB_playItem_t *first, DB_playItem_t *last) 
         it = next;
     }
     fclose (fp);
+
+    deadbeef->tf_free (tf);
     return 0;
 }
 
@@ -550,10 +555,12 @@ m3uplug_save_pls (const char *fname, DB_playItem_t *first, DB_playItem_t *last) 
         // skip subtracks, pls and m3u formats don't support that
         uint32_t flags = deadbeef->pl_get_item_flags (it);
         if (flags & DDB_IS_SUBTRACK) {
-            DB_playItem_t *next = deadbeef->pl_get_next (it, PL_MAIN);
-            deadbeef->pl_item_unref (it);
-            it = next;
-            continue;
+            if (deadbeef->pl_find_meta_int (it, ":TRACKNUM", 0)) {
+                DB_playItem_t *next = deadbeef->pl_get_next (it, PL_MAIN);
+                deadbeef->pl_item_unref (it);
+                it = next;
+                continue;
+            }
         }
         n++;
         if (it == last) {
@@ -574,10 +581,12 @@ m3uplug_save_pls (const char *fname, DB_playItem_t *first, DB_playItem_t *last) 
         // skip subtracks, pls and m3u formats don't support that
         uint32_t flags = deadbeef->pl_get_item_flags (it);
         if (flags & DDB_IS_SUBTRACK) {
-            DB_playItem_t *next = deadbeef->pl_get_next (it, PL_MAIN);
-            deadbeef->pl_item_unref (it);
-            it = next;
-            continue;
+            if (deadbeef->pl_find_meta_int (it, ":TRACKNUM", 0)) {
+                DB_playItem_t *next = deadbeef->pl_get_next (it, PL_MAIN);
+                deadbeef->pl_item_unref (it);
+                it = next;
+                continue;
+            }
         }
         deadbeef->pl_lock ();
         {
@@ -615,8 +624,7 @@ m3uplug_save (ddb_playlist_t *plt, const char *fname, DB_playItem_t *first, DB_p
 
 static const char * exts[] = { "m3u", "m3u8", "pls", NULL };
 DB_playlist_t plugin = {
-    .plugin.api_vmajor = 1,
-    .plugin.api_vminor = 0,
+    DDB_PLUGIN_SET_API_VERSION
     .plugin.version_major = 1,
     .plugin.version_minor = 0,
     .plugin.type = DB_PLUGIN_PLAYLIST,

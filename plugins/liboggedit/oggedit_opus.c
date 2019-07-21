@@ -46,9 +46,9 @@ int oggedit_write_opus_file(DB_FILE *in, const char *outname, const off_t offset
 
     int res;
     if (all_streams)
-        res = write_one_stream(in, out, &oy, offset, OPUSNAME);
+        res = (int)write_one_stream(in, out, &oy, offset, OPUSNAME);
     else
-        res = write_all_streams(in, out, &oy, offset);
+        res = (int)write_all_streams(in, out, &oy, offset);
 
     cleanup(in, out, &oy, NULL);
 
@@ -68,16 +68,16 @@ off_t oggedit_opus_stream_info(DB_FILE *in, const off_t start_offset, const off_
     return stream_size;
 }
 
-static ptrdiff_t check_opus_header(DB_FILE *in, ogg_sync_state *oy, const off_t offset, char **vendor)
+static long check_opus_header(DB_FILE *in, ogg_sync_state *oy, const off_t offset, char **vendor)
 {
     ogg_stream_state os;
     ogg_page og;
-    const int serial = init_read_stream(in, oy, &os, &og, offset, OPUSNAME);
+    const int64_t serial = init_read_stream(in, oy, &os, &og, offset, OPUSNAME);
     if (serial <= OGGEDIT_EOF)
         return serial;
 
     ogg_packet op;
-    const int pages = read_packet(in, oy, &os, &og, &op, 1);
+    const long pages = read_packet(in, oy, &os, &og, &op, 1);
     ogg_stream_clear(&os);
     if (pages <= OGGEDIT_EOF)
         return pages;
@@ -98,14 +98,14 @@ static ptrdiff_t check_opus_header(DB_FILE *in, ogg_sync_state *oy, const off_t 
     return op.bytes;
 }
 
-static long write_opus_tags(FILE *out, const int serial, const char *vendor, const size_t num_tags, char **tags, const size_t padding)
+static int64_t write_opus_tags(FILE *out, const int64_t serial, const char *vendor, const uint32_t num_tags, char **tags, const size_t padding)
 {
     ogg_packet op;
     if (!fill_vc_packet(TAGMAGIC, strlen(TAGMAGIC), vendor, num_tags, tags, false, padding, &op))
         return OGGEDIT_ALLOCATION_FAILURE;
 
     ogg_stream_state os;
-    if (ogg_stream_init(&os, serial))
+    if (ogg_stream_init(&os, (int)serial))
         return OGGEDIT_FAILED_TO_INIT_STREAM;
     os.b_o_s = 1;
     os.pageno = 1;
@@ -115,7 +115,7 @@ static long write_opus_tags(FILE *out, const int serial, const char *vendor, con
     return flush_stream(out, &os);
 }
 
-off_t oggedit_write_opus_metadata(DB_FILE *in, const char *fname, const off_t offset, const size_t stream_size, const int output_gain, const int num_tags, char **tags)
+off_t oggedit_write_opus_metadata(DB_FILE *in, const char *fname, const off_t offset, const off_t stream_size, const int output_gain, const uint32_t num_tags, char **tags)
 {
     off_t res;
     char tempname[PATH_MAX] = "";
@@ -131,15 +131,15 @@ off_t oggedit_write_opus_metadata(DB_FILE *in, const char *fname, const off_t of
     }
 
     /* Should we write the tags packet directly into the existing file ... */
-    const ptrdiff_t tags_packet_size = check_opus_header(in, &oy, offset, &vendor);
+    const long tags_packet_size = check_opus_header(in, &oy, offset, &vendor);
     if (tags_packet_size <= OGGEDIT_EOF) {
         res = tags_packet_size;
         goto cleanup;
     }
-    const size_t metadata_size = strlen(TAGMAGIC) + vc_size(vendor, num_tags, tags);
-    ptrdiff_t padding = tags_packet_size - metadata_size;
+    const int64_t metadata_size = strlen(TAGMAGIC) + vc_size(vendor, num_tags, tags);
+    int64_t padding = tags_packet_size - metadata_size;
     const off_t file_size_k = in->vfs->getlength(in) / 1000;
-    const size_t stream_size_k = stream_size ? stream_size / 1000 : file_size_k;
+    const off_t stream_size_k = stream_size ? stream_size / 1000 : file_size_k;
     if (file_size_k < 100 || padding < 0 || padding > file_size_k/10+stream_size_k+metadata_size) {
         res = open_temp_file(fname, tempname, &out);
         if (res) {
@@ -153,7 +153,7 @@ off_t oggedit_write_opus_metadata(DB_FILE *in, const char *fname, const off_t of
 
     /* Write pages until we reach the correct OpusHead, then write OpusTags */
     ogg_page og;
-    const int opus_serial = copy_up_to_codec(in, out, &oy, &og, *tempname ? 0 : offset, offset, OPUSNAME);
+    int64_t opus_serial = copy_up_to_codec(in, out, &oy, &og, *tempname ? 0 : offset, offset, OPUSNAME);
     if (opus_serial <= OGGEDIT_EOF) {
         res = opus_serial;
         goto cleanup;
@@ -163,9 +163,12 @@ off_t oggedit_write_opus_metadata(DB_FILE *in, const char *fname, const off_t of
         og.body[17] = output_gain >> 8 & 0xFF;
         ogg_page_checksum_set(&og);
     }
-    if ((res = copy_up_to_header(in, out, &oy, &og, opus_serial)) <= OGGEDIT_EOF)
+    opus_serial = copy_up_to_header(in, out, &oy, &og, opus_serial);
+    if (opus_serial <= OGGEDIT_EOF) {
+        res = opus_serial;
         goto cleanup;
-    const long pageno = write_opus_tags(out, opus_serial, vendor, num_tags, tags, (size_t)padding);
+    }
+    const int64_t pageno = write_opus_tags(out, opus_serial, vendor, num_tags, tags, padding);
     if (pageno < OGGEDIT_EOF) {
         res = pageno;
         goto cleanup;
@@ -173,8 +176,13 @@ off_t oggedit_write_opus_metadata(DB_FILE *in, const char *fname, const off_t of
 
     /* If we have tempfile, copy the remaining pages */
     if (*tempname) {
-        if ((res = copy_remaining_pages(in, out, &oy, opus_serial, pageno)) <= OGGEDIT_EOF)
+        opus_serial = copy_remaining_pages(in, out, &oy, opus_serial, (uint32_t)pageno);
+        if (opus_serial <= OGGEDIT_EOF) {
+            res = opus_serial;
             goto cleanup;
+        }
+        fclose (out);
+        out = NULL;
         if (rename(tempname, fname)) {
             res = OGGEDIT_RENAME_FAILED;
             goto cleanup;

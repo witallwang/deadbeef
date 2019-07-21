@@ -54,7 +54,7 @@ thread_start (void (*fn)(void *ctx), void *ctx) {
         fprintf (stderr, "pthread_attr_destroy failed: %s\n", strerror (s));
         return 0;
     }
-    return tid;
+    return (intptr_t)tid;
 }
 
 intptr_t
@@ -138,6 +138,7 @@ mutex_create_nonrecursive (void) {
     int err = pthread_mutex_init (mtx, &attr);
     if (err != 0) {
         fprintf (stderr, "pthread_mutex_init failed: %s\n", strerror (err));
+        free (mtx);
         return 0;
     }
     pthread_mutexattr_destroy (&attr);
@@ -153,6 +154,7 @@ mutex_create (void) {
     int err = pthread_mutex_init (mtx, &attr);
     if (err != 0) {
         fprintf (stderr, "pthread_mutex_init failed: %s\n", strerror (err));
+        free (mtx);
         return 0;
     }
     pthread_mutexattr_destroy (&attr);
@@ -192,6 +194,7 @@ cond_create (void) {
     int err = pthread_cond_init (cond, NULL);
     if (err != 0) {
         fprintf (stderr, "pthread_cond_init failed: %s\n", strerror (err));
+        free (cond);
         return 0;
     }
     return (uintptr_t)cond;
@@ -212,6 +215,7 @@ cond_wait (uintptr_t c, uintptr_t m) {
     pthread_mutex_t *mutex = (pthread_mutex_t *)m;
     int err = mutex_lock (m);
     if (err != 0) {
+        fprintf (stderr, "pthread_cond_wait mutex_lock failed: %s\n", strerror (err));
         return err;
     }
     err = pthread_cond_wait (cond, mutex);

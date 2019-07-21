@@ -30,6 +30,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "../../deadbeef.h"
+#include "../../strdupa.h"
 #include "wildmidi_lib.h"
 #ifdef HAVE_CONFIG_H
 #include "../../config.h"
@@ -70,10 +71,11 @@ wmidi_init (DB_fileinfo_t *_info, DB_playItem_t *it) {
     wmidi_info_t *info = (wmidi_info_t *)_info;
 
     deadbeef->pl_lock ();
-    info->m = WildMidi_Open (deadbeef->pl_find_meta (it, ":URI"));
+    const char *uri = strdupa (deadbeef->pl_find_meta (it, ":URI"));
     deadbeef->pl_unlock ();
+    info->m = WildMidi_Open (uri);
     if (!info->m) {
-        trace ("wmidi: failed to open %s\n", deadbeef->pl_find_meta (it, ":URI"));
+        trace ("wmidi: failed to open %s\n", uri);
         return -1;
     }
 
@@ -213,15 +215,14 @@ wildmidi_load (DB_functions_t *api) {
     return DB_PLUGIN (&wmidi_plugin);
 }
 
-static const char *exts[] = { "mid",NULL };
+static const char *exts[] = { "mid","midi",NULL };
 
 static const char settings_dlg[] =
     "property \"Timidity++ bank configuration file\" file wildmidi.config \"" DEFAULT_TIMIDITY_CONFIG "\";\n"
 ;
 // define plugin interface
 DB_decoder_t wmidi_plugin = {
-    .plugin.api_vmajor = 1,
-    .plugin.api_vminor = 0,
+    DDB_PLUGIN_SET_API_VERSION
     .plugin.type = DB_PLUGIN_DECODER,
     .plugin.version_major = 1,
     .plugin.version_minor = 0,

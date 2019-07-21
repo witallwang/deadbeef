@@ -964,6 +964,17 @@ on_tabstrip_button_press_event(GtkWidget      *widget,
         }
         if (tab_clicked != -1) {
             gtkui_playlist_set_curr (tab_clicked);
+
+            if (event->type == GDK_2BUTTON_PRESS) {
+                ddb_playlist_t *plt = deadbeef->plt_get_curr ();
+                int cur = deadbeef->plt_get_cursor (plt, PL_MAIN);
+                deadbeef->plt_unref (plt);
+
+                if (cur == -1) {
+                    cur = 0;
+                }
+                deadbeef->sendmessage (DB_EV_PLAY_NUM, 0, cur, 0);
+            }
         }
         else {
             if (event->type == GDK_2BUTTON_PRESS) {
@@ -1001,7 +1012,8 @@ on_tabstrip_button_press_event(GtkWidget      *widget,
     }
     else if (TEST_RIGHT_CLICK(event)) {
         GtkWidget *menu = gtkui_create_pltmenu (tab_clicked);
-        gtk_menu_popup (GTK_MENU (menu), NULL, NULL, NULL, widget, 0, gtk_get_current_event_time());
+        gtk_menu_attach_to_widget (GTK_MENU (menu), GTK_WIDGET (widget), NULL);
+        gtk_menu_popup (GTK_MENU (menu), NULL, NULL, NULL, NULL, 0, gtk_get_current_event_time());
     }
     else if (event->button == 2) {
         if (tab_clicked == -1) {
@@ -1016,7 +1028,6 @@ on_tabstrip_button_press_event(GtkWidget      *widget,
             if (tab_clicked != -1) {
                 deadbeef->plt_remove (tab_clicked);
                 // force invalidation of playlist cache
-                search_refresh ();
                 int playlist = deadbeef->plt_get_curr_idx ();
                 deadbeef->conf_set_int ("playlist.current", playlist);
             }

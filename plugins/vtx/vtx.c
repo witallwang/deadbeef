@@ -26,6 +26,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "../../deadbeef.h"
+#include "../../strdupa.h"
 #include "ayemu.h"
 
 #define min(x,y) ((x)<(y)?(x):(y))
@@ -69,10 +70,11 @@ vtx_init (DB_fileinfo_t *_info, DB_playItem_t *it) {
     char *buf = NULL;
 
     deadbeef->pl_lock ();
-    DB_FILE *fp = deadbeef->fopen (deadbeef->pl_find_meta (it, ":URI"));
+    const char *uri = strdupa (deadbeef->pl_find_meta (it, ":URI"));
     deadbeef->pl_unlock ();
+    DB_FILE *fp = deadbeef->fopen (uri);
     if (!fp) {
-        trace ("vtx: failed to open file %s\n", deadbeef->pl_find_meta (it, ":URI"));
+        trace ("vtx: failed to open file %s\n", uri);
         return -1;
     }
 
@@ -307,13 +309,12 @@ vtx_stop (void) {
 }
 
 static const char settings_dlg[] =
-    "property \"Bits per sample (8 or 16)\" entry vtx.bps 16;\n"
+    "property \"Bits per sample\" select[2] vtx.bps 0 16 8;\n"
 ;
 
 // define plugin interface
 static DB_decoder_t plugin = {
-    .plugin.api_vmajor = 1,
-    .plugin.api_vminor = 0,
+    DDB_PLUGIN_SET_API_VERSION
     .plugin.version_major = 1,
     .plugin.version_minor = 0,
     .plugin.type = DB_PLUGIN_DECODER,
